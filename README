@@ -1,0 +1,11 @@
+CalSPEED Desktop
+================
+ 
+CalSPEED Desktop empowers end-users with a professional-level, industry-standard testing tool to measure the quality and speed of their desktop data connection.
+
+CalSPEED conducts a two-phase test including initial testing and results validation in order to ensure statistically significant measurements. Test your upload speed, download speed, message delay (latency), and message delay variation (jitter) using CalSPEED Desktop. The first two metrics measure your Internet usage experience, while the second two measure the quality of your data connection.
+
+This code is released under the BSD 3-Clause License (see LICENSE for details).
+
+You can install it from the following website: 
+    http://calspeed.org/
