@@ -206,7 +206,7 @@ public class FilePrep {
 //                System.out.println("Debug: File " + detailFile + " exists.");
                 SecureFileTransfer sft = new SecureFileTransfer(
                         "USERNAME",
-                        "",
+                        "PASSWORD",
                         "IP ADDRESS",
                         "",
                         "",

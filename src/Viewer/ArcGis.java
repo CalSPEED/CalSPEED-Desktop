@@ -78,7 +78,7 @@ public class ArcGis extends Task {
             String[] coordinates = latLngToXY(this.lat, this.lng);
             //only should get the location when coordinates are actually returned...
             if(coordinates != null) {
-                String allLines = urlRequestHelper("http://bbdgis.cpuc.ca.gov/ArcGIS/rest/services/CPUC/MOBILE_VIEWER_APP_speeds/MapServer/0/query?text=&geometry=%7B%22x%22%3A\"" + coordinates[0] + "\"%2C%22y%22%3A\"" + coordinates[1] + "\"%2C%22spatialReference%22%3A%7B%22wkid%22%3A102113%7D%7D&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false&maxAllowableOffset=&outSR=&outFields=*&f=pjson");
+                String allLines = urlRequestHelper("http://IP_ADDRESS/ArcGIS/rest/services/MOBILE_VIEWER_APP_mod/MapServer/0/query?text=&geometry=%7B%22x%22%3A\"" + coordinates[0] + "\"%2C%22y%22%3A\"" + coordinates[1] + "\"%2C%22spatialReference%22%3A%7B%22wkid%22%3A102113%7D%7D&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false&maxAllowableOffset=&outSR=&outFields=*&f=pjson");
                 setFinalValueProperty(sortJsonResults(allLines, "DBANAME", "MAXADUP", "MAXADDOWN"));
                 System.out.println(sortJsonResults(allLines, "DBANAME", "MAXADUP", "MAXADDOWN"));
             }
@@ -92,7 +92,7 @@ public class ArcGis extends Task {
             String[] coordinates = latLngToXY(this.lat, this.lng);
             //only should get the location when coordinates are actually returned...
             if(coordinates != null) {
-                String allLines = urlRequestHelper("http://bbdgis.cpuc.ca.gov/ArcGIS/rest/services/CPUC/MOBILE_VIEWER_APP_speeds/MapServer/1/query?text=&geometry={%22x%22%3A" + coordinates[0] + "%2C%22y%22%3A" + coordinates[1] + "%2C%22spatialReference%22%3A{%22wkid%22%3A102113}}&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false&maxAllowableOffset=&outSR=&outFields=*&f=json");
+                String allLines = urlRequestHelper("http://IP_ADDRESS/ArcGIS/rest/services/MOBILE_VIEWER_APP_mod/MapServer/1/query?text=&geometry={%22x%22%3A" + coordinates[0] + "%2C%22y%22%3A" + coordinates[1] + "%2C%22spatialReference%22%3A{%22wkid%22%3A102113}}&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false&maxAllowableOffset=&outSR=&outFields=*&f=json");
                 setFinalValueProperty( sortJsonResults(allLines, "DBANAME", "MUP", "MDOWN") );
                 System.out.println( sortJsonResults(allLines, "DBANAME", "MUP", "MDOWN") );
             }

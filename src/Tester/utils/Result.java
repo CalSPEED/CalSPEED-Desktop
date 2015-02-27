@@ -42,4 +42,5 @@ public class Result {
     public Double download = -1.0;
     public Double jitter = -1.0;
     public Double delay = -1.0;
+    public Double mos = -1.0;
 }

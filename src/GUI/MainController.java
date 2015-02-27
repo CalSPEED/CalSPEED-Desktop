@@ -65,6 +65,7 @@ public class MainController extends StackPane {
         final Database database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
 //      database.dropTable();
         database.createInit();
+        database.updateTable();
         final String data = database.selectData();
 
         final URL url = getClass().getResource("index.html");
@@ -77,6 +78,9 @@ public class MainController extends StackPane {
                         if(newState == Worker.State.SUCCEEDED){
                             jsTester = (JSObject) webEngine.executeScript("Tester");
                             jsTester.setMember("app", this);
+                            
+                            // Set up the viewer message to display or not
+                            ((JSObject) webEngine.executeScript("ViewerMsg")).call("setMessageDisplay", true);
 
                             jsTemplater = (JSObject) webEngine.executeScript("Templater");
                             String []args = { "#history-results", "result", data };
@@ -99,6 +103,8 @@ public class MainController extends StackPane {
         if(testRunning) {
             return;
         }
+        MOSCalculation.clearData();
+        
         Calendar cal = Calendar.getInstance();
         testResult = new Result();
 
@@ -112,7 +118,7 @@ public class MainController extends StackPane {
         testResult.timestamp = String.valueOf(cal.getTimeInMillis());
 
         LocationService.setLocation();
-        testResult.location = LocationService.getLocation(); 
+        testResult.location = LocationService.getLocation(); //need to write a method that will actually do some reverse geocoding mumbo jumbo
         testResult.lat = LocationService.getLat();
         testResult.lng = LocationService.getLng();
 
@@ -232,21 +238,24 @@ public class MainController extends StackPane {
             tests[current_test].isDoneProperty().addListener(new ChangeListener() {
                 @Override
                 public void changed(ObservableValue o, Object oldVal, Object newVal) {
-
+                        testResult.mos = MOSCalculation.getMOS();
                         final String result = jsonParser.toJson(testResult);
 
                         Platform.runLater(new Runnable() {
                             @Override
                             public void run() {
+                                Database database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
                                 Integer[] arg = { 4 };
                                 jsTester.call("setTestsComplete", arg);
-                                String[] args = {"#final-results", "result", result};
+                                String[] args = {"#final-results", "finish", result};
                                 jsTemplater.call("loadTemplate", args);
-                                args[0] = "#history-results";
-                                jsTemplater.call("prependTemplate", args);
                                 FilePrep.saveToFile();
-                                Database database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
                                 database.insertData(testResult);
+                                args[0] = "#history-results";
+                                args[1] = "result";
+                                args[2] = database.selectData();
+                                jsTemplater.call("loadTemplate", args);
+                                System.out.println("MOS: " + MOSCalculation.getMOS());
                                 testRunning = false;
                             }
                         });

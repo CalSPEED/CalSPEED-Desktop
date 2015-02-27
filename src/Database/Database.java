@@ -27,7 +27,6 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 package Database;
 
 import java.lang.reflect.Type;
@@ -80,10 +79,20 @@ public class Database {
                             + "upload DOUBLE,"
                             + "download DOUBLE,"
                             + "jitter DOUBLE,"
-                            + "delay DOUBLE)"
+                            + "delay DOUBLE,"
+                            + "mos DOUBLE)"
             );
         } catch (SQLException sqlE) {
             sqlE.printStackTrace();
+        }
+    }
+    
+    public void updateTable() {
+        try {
+            stat.execute("ALTER TABLE " + tblName + " "
+                    + "ADD mos DOUBLE");
+        } catch (SQLException e) {
+            
         }
     }
 
@@ -103,18 +112,10 @@ public class Database {
         }
     }
 
-    public void createFromFile(String filename) {
-        try {
-            stat.execute("runscript from '" + filename + "'");
-        } catch (SQLException sqlE) {
-            sqlE.printStackTrace();
-        }
-    }
-
-    public void insertData(String type, String location, String lat, String lng, Double upload, Double download, Double jitter, Double delay) {
+    public void insertData(String type, String location, String lat, String lng, Double upload, Double download, Double jitter, Double delay, Double mos) {
         try {
             stat.execute("INSERT INTO " +
-                            tblName + "(timestamp, type, location, lat, lng, upload, download, jitter, delay) " +
+                            tblName + "(timestamp, type, location, lat, lng, upload, download, jitter, delay, mos) " +
                             "VALUES(" +
                             "CURRENT_TIMESTAMP, '" +
                             type + "', '" +
@@ -124,7 +125,8 @@ public class Database {
                             upload + ", " +
                             download + ", " +
                             jitter + ", " +
-                            delay + ")"
+                            delay + ", " +
+                            mos + ")"
             );
         } catch (SQLException sqlE) {
             sqlE.printStackTrace();
@@ -132,18 +134,18 @@ public class Database {
     }
 
     public void insertData(Result result) {
-        insertData(result.type, result.location, result.lat, result.lng, result.upload, result.download, result.jitter, result.delay);
+        insertData(result.type, result.location, result.lat, result.lng, result.upload, result.download, result.jitter, result.delay, result.mos);
     }
 
     public String selectData() {
-        ArrayList<Map> arrayResults = new ArrayList<Map>();
+        ArrayList<Map> arrayResults = new ArrayList<>();
         String finalResults = "";
 
         try {
             Map<String, String> arrayResult;
             ResultSet rs = stat.executeQuery("SELECT * FROM " + tblName);
             while (rs.next()) {
-                arrayResult = new HashMap<String, String>();
+                arrayResult = new HashMap<>();
                 arrayResult.put("timestamp", rs.getString("timestamp"));
 
                 //take the timestamp and convert it to times and dates used by the UI
@@ -156,7 +158,7 @@ public class Database {
                     cal.setTime(d);
 
                     arrayResult.put("time", new SimpleDateFormat("HH:mm").format(cal.getTime()));
-                    arrayResult.put("date", new SimpleDateFormat("dd MMM, yyyy").format(cal.getTime()));
+                    arrayResult.put("date", new SimpleDateFormat("MMM dd, yyyy").format(cal.getTime()));
 
                 } catch(ParseException e) {
                     e.printStackTrace();
@@ -167,6 +169,7 @@ public class Database {
                 arrayResult.put("download", rs.getString("download"));
                 arrayResult.put("jitter", rs.getString("jitter"));
                 arrayResult.put("delay", rs.getString("delay"));
+                arrayResult.put("mos", rs.getString("mos"));
 
                 arrayResults.add(0, arrayResult);
             }
@@ -193,7 +196,8 @@ public class Database {
                                 "upload:" + rs.getString("upload") + " " +
                                 "download:" + rs.getString("download") + " " +
                                 "jitter:" + rs.getString("jitter") + " " +
-                                "delay:" + rs.getString("delay")
+                                "delay:" + rs.getString("delay") + " " +
+                                "mos:" + rs.getString("mos")
                 );
             }
         } catch (SQLException sqlE) {

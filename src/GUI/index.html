@@ -1,51 +1,25 @@
 <!doctype html>
 <html>
 <head>
-    <link rel="stylesheet" href="css/font-awesome.min.css"/>
-    <link rel="stylesheet" href="css/bootstrap.grid.min.css" />
-    <link rel="stylesheet" href="css/default.css"/>
-    <link rel="stylesheet" href="css/demo.css"/>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/font-awesome.min.css" />
+    <link rel="stylesheet" href="css/bootstrap.custom.min.css" />
+    <link rel="stylesheet" href="css/default.css" />
+    <link rel="stylesheet" href="css/demo.css" />
+    <link rel="stylesheet" href="css/styles.css" />
 
-    <script type="text/javascript" src="js/jquery.min.js"></script>
-    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=places"></script>
-    <script type="text/javascript" src="js/simple-tabs-pure-js.min.js"></script>
-    <script type="text/javascript" src="js/Viewer.js">
-    </script>
-    <script type="text/javascript" src="js/velocity.min.js"></script>
-    <script type="text/javascript" src="js/handlebars.js"></script>
-    <script type="text/javascript" src="js/Navigator.js"></script>
-    <script type="text/javascript" src="js/Tester.js"></script>
-    <script type="text/javascript" src="js/Templater.js"></script>
-    <script type="text/javascript">
-        // initialize everything
-        $(function() {
-	        //insert the template files (still found in index.html)
-	        //function setupTemplates() {
-		     //       $("[data-template]").each(function() {
-			 //       template = $(this).data("template");
-			 //       $(this).html($("#" + template + "-template").text());
-		     //   });
-	       // }
-
-
-	       // setupTemplates();
-	        $.each($("[data-template]"), function() {
-	            Templater.loadTemplate(this, "test");
-	        });
-
-	        Tester.init();
-	        Navigator.init();
-        });
-
-        //hardcoded for now cause I'm lazy...
-        var infoMessage  = "<p>CalSPEED, released by the California Public Utilities Commission (CPUC), empowers end-users with a professional-level, industry-standard testing tool to measure the quality and speed of their mobile data connection.</p>";
-            infoMessage += "<p>CalSPEED conducts a two-phase test of an initial test and a second validation test in order to ensure statistically significant measurements. The test captures upload speed, download speed, message delay (latency), and message delay variation (jitter). The first two metrics measure broadband throughput, while the second two measure the streaming quality of your mobile broadband connection. A brief results history of each test is stored locally, displaying a detailed description when a test is selected. The results are uploaded to a public repository at the CPUC to provide you with the ability to compare broadband coverage and performance at your location with that in other areas of California.</p>";
-            infoMessage += "<p>The test results may vary based on factors such as location, end-user hardware, network congestion, and time of day. If you receive a results \"Incomplete\" message, it is because one of these factors has hindered the collection of valid results. Please try running the test again.</p>";
-            infoMessage += "<p>The California Public Utilities Commission (CPUC) is the California recipient of an $8,000,000 State Broadband Data and Development Grant, awarded by the National Telecommunications and Information Administration (NTIA) under the American Recovery and Reinvestment Act (ARRA). A portion of this Grant funds the development, maintenance, and operation of CalSPEED.</p>";
-            infoMessage += "<p>CalSPEED is developed by California State University, Monterey Bay\'s Computer Science and Information Technology Program.</p>";
-            infoMessage += "<p>*<small><em>Please note that, depending on the network connection, tests in CalSPEED may use a lot of data capacity. As with any mobile application, monitor your usage relative to your particular data plan. The CPUC does not assume any responsibility for charges incurred while running CalSPEED.</em></small></p>";
-    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=places"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.custom.min.js"></script>
+    <script src="js/simple-tabs-pure-js.min.js"></script>
+    <script src="js/Viewer.js"></script>
+    <script src="js/ViewerMsg.js"></script>
+    <script src="js/velocity.min.js"></script>
+    <script src="js/handlebars.js"></script>
+    <script src="js/handlebars-helper.js"></script>
+    <script src="js/Navigator.js"></script>
+    <script src="js/Tester.js"></script>
+    <script src="js/Templater.js"></script>
+    <script src="js/script.js"></script>
 </head>
 <body>
     <!--all of the messages will go here-->
@@ -57,42 +31,140 @@
             </div>
             <div class="body"></div>
             <div class="footer">
-                <button class="btn btn-primary" onClick="Tester.hideMessage()">Ok</button>
+                <button class="btn btn-primary" onClick="Tester.hideMessage();">Ok</button>
             </div>
         </div>
     </div>
 
-<!--reusable template files-->
-<script type="text/x-handlebars-template" id="result-template">
-			{{#each results}}
-			<div class="row text-center">
-				<div class="col-xs-2">
-					<h3 class="text-center"><i class="test-type fa fa-{{type}}"></i></h3>
-					<h3 class="text-center">{{date}}</h3>
-					<p class="tex-center"><small>{{time}}</small></p>
-				</div>
-				<div class="col-xs-2 red-border-highlight">
-					<h1><i class="fa fa-map-marker red"></i></h1>
-					<p><strong>{{location}}&nbsp;<br/>&nbsp;</strong></p>
-				</div>
-				<div class="col-xs-2">
-					<h1><i class="fa fa-arrow-circle-up"></i></h1>
-					<p>Upload<br/><strong>{{formatResult upload "mbps"}}</strong></p>
-				</div>
-                <div class="col-xs-2">
-                    <h1><i class="fa fa-arrow-circle-down"></i></h1>
-                    <p>Download<br/><strong>{{formatResult download "mbps"}}</strong></p>
+<script type="text/x-handlebars-template" id="finish-template">
+    <div class="modal fade" id="resultModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <h4 class="modal-title text-center" id="resultModalLabel">Results</h4>
+                    <table class="table">
+                        {{#each results}}
+                        <tr>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="Location">
+                                    <i class="fa fa-map-marker red"></i>
+                                </a>
+                            </td>
+                            <td>{{location}}</td>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="Jitter">
+                                    <i class="fa fa-sort"></i>
+                                </a>
+                            </td>
+                            <td>{{formatResult jitter "ms"}}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="Upload">
+                                    <i class="fa fa-arrow-circle-up"></i>
+                                </a>
+                            </td>
+                            <td>{{formatResult upload "mbps"}}</td>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="Delay">
+                                    <i class="fa fa-clock-o"></i>
+                                </a>
+                            </td>
+                            <td>{{formatResult delay "ms"}}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                              <a data-toggle="tooltip" data-original-title="Download">
+                                  <i class="fa fa-arrow-circle-down"></i>
+                              </a>
+                            </td>
+                            <td>{{formatResult download "mbps"}}</td>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="MOS">
+                                    <i class="fa fa-bar-chart-o"></i>
+                                </a>
+                            </td>
+                            <td class="mos">
+                                <a data-toggle="tooltip" data-original-title="{{formatResult mos ""}}">
+                                    {{mosGrader mos}}
+                                </a>
+                            </td>
+                        </tr>
+                        {{/each}}
+                    </table>
+                    <button type="button" class="center-block close btn btn-default" data-dismiss="modal">Done</button>
                 </div>
-				<div class="col-xs-2">
-					<h1><i class="fa fa-sort"></i></h1>
-					<p>Delay Variation<br/><strong>{{formatResult jitter "ms"}}</strong></p><!--also known as delay variation-->
-				</div>
-				<div class="col-xs-2">
-					<h1><i class="fa fa-clock-o"></i></h1>
-					<p>Delay<br /><strong>{{formatResult delay "ms"}}</strong></p>
-				</div>
-			</div>
-			{{/each}}
+            </div>
+        </div>
+    </div>
+</script>
+<!--history template-->
+<script type="text/x-handlebars-template" id="result-template">
+    <div class="row">
+        <table class="table">
+            <tr>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Date">
+                        <span class="fa-stack fa-1x">
+                            <i class="fa fa-calendar-o fa-stack-1x"></i>
+                            <strong class="fa-stack-1x calendar-text">{{currentDay}}</strong>
+                        </span>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Location">
+                        <i class="fa fa-map-marker red"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Upload">
+                        <i class="fa fa-arrow-circle-up"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Download">
+                        <i class="fa fa-arrow-circle-down"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Jitter">
+                        <i class="fa fa-sort"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Delay">
+                        <i class="fa fa-clock-o"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="MOS">
+                        <i class="fa fa-bar-chart-o"></i>
+                    </a>
+                </td>
+                <!--<td>TODO: Remove row</td>-->
+            </tr>
+            {{#each results}}
+                <tr>
+                    <td class="date">
+                        <a data-toggle="tooltip" data-original-title="{{time}}">
+                            {{date}}
+                        </a>
+                    </td>
+                    <td>{{location}}</td>
+                    <td>{{formatResult upload "mbps"}}</td>
+                    <td>{{formatResult download "mbps"}}</td>
+                    <td>{{formatResult jitter "ms"}}</td>
+                    <td>{{formatResult delay "ms"}}</td>
+                    <td class="mos">
+                        <a data-toggle="tooltip" data-original-title="{{formatResult mos ""}}">
+                            {{mosGrader mos}}
+                        </a>
+                    </td>
+                    <!--<td class="fa-times red"></span>TODO: Remove row</td>-->
+                </tr>
+            {{/each}}
+        </table>
+    </div>
 </script>
 <!--NOTE: i placed a spac so that we can verify that the address is a new one. Don't remove it unless you really undestand what's going on-->
 <script type="text/x-handlebars-template" id="viewer-template">
@@ -111,7 +183,7 @@
 
     <div class="clear"></div>
 
-    <h2 class="text-center legend"><strong><div><i class="fa fa-arrow-circle-o-down text-x-large"></i></div> = download (mbps)&nbsp;&nbsp;&nbsp;<div><i class="fa fa-arrow-circle-o-down text-x-large"></i></div> = upload (mbps)</strong></h2>
+    <h2 class="text-center legend"><strong><div><i class="fa fa-arrow-circle-o-down text-x-large"></i></div> = download (mbps)&nbsp;&nbsp;&nbsp;<div><i class="fa fa-arrow-circle-o-up text-x-large"></i></div> = upload (mbps)</strong></h2>
 
     <div id="advertised-fixed" class="tab-page active-page text-center">
         <!--cause i'm lazy and don't feel like using margins-->
@@ -210,77 +282,77 @@
 </script>
 
 <script type="text/x-handlebars-template" id="test-template">
-			<!--upload test section-->
-			<div class="test-0 upload active" data-metric="mbps">
-				<h2 class="results text-center"></h2>
-				<div class="speedometer">
-					<div class="meter"></div>
-				</div>
-				<div class="upload-label">
-					<h2 class="text-center"><i class="fa fa-arrow-circle-up pull-left"></i>Upload</h2>
-				</div>
-			</div>
+    <!--upload test section-->
+    <div class="test-0 upload active" data-metric="mbps">
+        <h2 class="results text-center"></h2>
+        <div class="speedometer">
+            <div class="meter"></div>
+        </div>
+        <div class="upload-label">
+            <h2 class="text-center"><i class="fa fa-arrow-circle-up pull-left"></i>Upload</h2>
+        </div>
+    </div>
 
-			<!--download test section-->
-			<div class="test-1 download inactive" data-metric="mbps">
-				<div class="download-label">
-					<h2 class="text-center">Download<i class="fa fa-arrow-circle-down pull-right"></i></h2>
-				</div>
-				<div class="speedometer">
-					<div class="meter"></div>
-				</div>
-				<h2 class="results text-center"></h2>
-			</div>
+    <!--download test section-->
+    <div class="test-1 download inactive" data-metric="mbps">
+        <div class="download-label">
+            <h2 class="text-center">Download<i class="fa fa-arrow-circle-down pull-right"></i></h2>
+        </div>
+        <div class="speedometer">
+            <div class="meter"></div>
+        </div>
+        <h2 class="results text-center"></h2>
+    </div>
 
-            <!--delay test section-->
-            <div class="test-2 delay inactive" data-metric="ms">
-                <h2 class="results text-center"></h2>
-                <div class="delay-loader">
-                    <div></div>
-                </div>
-                <div class="delay-label">
-                    <h2 class="text-center">Delay</h2>
-                </div>
-            </div>
+    <!--delay test section-->
+    <div class="test-2 delay inactive" data-metric="ms">
+        <h2 class="results text-center"></h2>
+        <div class="delay-loader">
+            <div></div>
+        </div>
+        <div class="delay-label">
+            <h2 class="text-center">Delay</h2>
+        </div>
+    </div>
 
-			<!--jitter test section-->
-			<div class="test-3 jitter inactive" data-metric="ms">
-                <svg version="1.1" x="0px" y="0px" viewBox="0 0 583.246 220.381" enable-background="new 0 0 583.246 220.381" xml:space="preserve">
-	                <path class="heartbeat" fill="none" stroke="#93CCE1" stroke-width="4.42" stroke-miterlimit="10" d="M0,108.844c2.041,0,3.523,0,5.006,0
-		c16.006,0,15.596-0.118,31.6,0.086c3.756,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823
-		l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302
-		c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772
-		l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59
-		c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.773,4.876c9.955-0.095,19.911-0.148,29.867-0.174l2,0.006
-		c2.041,0,3.523,0,5.006,0c16.006,0,15.596-0.118,31.6,0.086c3.756,0.048,6.574-1.089,9.154-3.604
-		c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812
-		l2.567-18.138l1.145,14.302c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082
-		c1.258,17.989,2.557,29.788,3.894,47.772l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222
-		c0.515-4.335,1.201-8.65,1.894-13.59c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.772,4.876
-		c9.955-0.095,19.911-0.148,29.867-0.174l1,0.089c2.041,0,3.523,0,5.006,0c16.006,0,15.596-0.118,31.6,0.086
-		c3.756,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823l3.475,11.952l1.666-12.154
-		c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302c1.267,18.539,2.582,37.074,3.851,55.613
-		c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772l2.591,22.524l2.698-21.357
-		c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59c1.847,2.03,4.364,4.872,4.364,4.872
-		c2.592,4.006,6.104,4.92,10.772,4.876c9.955-0.095,19.911-0.148,29.867-0.174l2,0.006c2.041,0,3.523,0,5.006,0
-		c16.006,0,15.596-0.118,31.6,0.086c3.755,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823
-		l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302
-		c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772
-		l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59
-		c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.773,4.876c9.955-0.095,19.911-0.148,29.867-0.174"/>
-                 </svg>
-                 <h2 class="results text-center"></h2>
-                <div class="jitter-label">
-                    <h2 class="text-center">Delay Variation</h2>
-                </div>
-			</div>
+    <!--jitter test section-->
+    <div class="test-3 jitter inactive" data-metric="ms">
+        <svg version="1.1" x="0px" y="0px" viewBox="0 0 583.246 220.381" enable-background="new 0 0 583.246 220.381" xml:space="preserve">
+            <path class="heartbeat" fill="none" stroke="#93CCE1" stroke-width="4.42" stroke-miterlimit="10" d="M0,108.844c2.041,0,3.523,0,5.006,0
+        c16.006,0,15.596-0.118,31.6,0.086c3.756,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823
+        l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302
+        c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772
+        l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59
+        c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.773,4.876c9.955-0.095,19.911-0.148,29.867-0.174l2,0.006
+        c2.041,0,3.523,0,5.006,0c16.006,0,15.596-0.118,31.6,0.086c3.756,0.048,6.574-1.089,9.154-3.604
+        c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812
+        l2.567-18.138l1.145,14.302c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082
+        c1.258,17.989,2.557,29.788,3.894,47.772l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222
+        c0.515-4.335,1.201-8.65,1.894-13.59c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.772,4.876
+        c9.955-0.095,19.911-0.148,29.867-0.174l1,0.089c2.041,0,3.523,0,5.006,0c16.006,0,15.596-0.118,31.6,0.086
+        c3.756,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823l3.475,11.952l1.666-12.154
+        c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302c1.267,18.539,2.582,37.074,3.851,55.613
+        c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772l2.591,22.524l2.698-21.357
+        c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59c1.847,2.03,4.364,4.872,4.364,4.872
+        c2.592,4.006,6.104,4.92,10.772,4.876c9.955-0.095,19.911-0.148,29.867-0.174l2,0.006c2.041,0,3.523,0,5.006,0
+        c16.006,0,15.596-0.118,31.6,0.086c3.755,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823
+        l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302
+        c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772
+        l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59
+        c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.773,4.876c9.955-0.095,19.911-0.148,29.867-0.174"/>
+        </svg>
+        <h2 class="results text-center"></h2>
+        <div class="jitter-label">
+            <h2 class="text-center">Delay Variation</h2>
+        </div>
+    </div>
 
-			<h1 class="testprogress">
-				<div class="progress"></div>
-				<button class="btn btn-test">
-					<i class="fa fa-flask"></i>
-				</button>
-			</h1>
+    <h1 class="testprogress">
+        <div class="progress"></div>
+        <button class="btn btn-test">
+            <i class="fa fa-flask"></i>
+        </button>
+    </h1>
 </script>
 <div id="menu">
     <div id="logo">
@@ -293,12 +365,11 @@
         <li class="item-1 text-center inactive" onClick="Navigator.setPage(1)">
             <i class="fa fa-archive"></i><span>History</span>
         </li>
-        <li class="item-2 text-center inactive" onClick="Navigator.setPage(2)">
+        <li class="item-2 text-center inactive" onClick="Navigator.setPage(2); ViewerMsg.showMessage(viewerMessage, '', ''); ViewerMsg.setMessageDisplay(false);">
             <i class="fa fa-globe"></i><span>Viewer</span>
         </li>
      </ul>
      <div class="text-center bottom">
-         <!--<a onClick="app.openAbout()"><i class="fa fa-info-circle"></i></a>-->
          <a onClick="Tester.showMessage(infoMessage, 'fa-info-circle', 'large')"><i class="fa fa-info-circle"></i></a>
      </div>
 </div>
@@ -327,6 +398,9 @@
                 <div class="phase-0 active">
                     <div class="table">
                         <h1 class="text-center">Click the button <button class="btn btn-test" onClick="app.startTest();"><i class="fa fa-flask"></i></button> to start a new test</h1>
+                        <div class="alert alert-warning" id="upgrade">
+                            New version of this program is available! Please uninstall the previous version and install the new version from <a href="http://calspeed.org">CalSpeed.org</a>
+                        </div>
                     </div>
                 </div>
                 <div class="phase-1 inactive">
@@ -350,7 +424,7 @@
         </div>
     </div><!--end of page-0-->
     <div id="history" class="page-1">
-        <h1 class="text-center title">History</h1>
+        <!--<h1 class="text-center title">History</h1>-->
         <div id="history-results"></div>
     </div>
     <div id="viewer" class="page-2">

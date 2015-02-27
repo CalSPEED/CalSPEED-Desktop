@@ -110,6 +110,7 @@ public class ResultProcessor {
         match = regex.matcher(line);
         if(match.find()) {
             result = Double.valueOf( match.group(1) );
+            MOSCalculation.addPing(result);
         }
 
         
@@ -161,10 +162,12 @@ public class ResultProcessor {
         Matcher match;
 
         if(line.matches("(.*)(\\d+\\s\\(\\d+%\\)$)")) {
-            regex = Pattern.compile("(\\d+\\.\\d+)(\\sms)");
+            regex = Pattern.compile("(\\d+\\.\\d+)\\sms\\s+(\\d+)/\\s+(\\d+)\\s\\(");
             match = regex.matcher(line);
             if(match.find()) {
                 result = Double.valueOf( match.group(1) );
+                MOSCalculation.addJitter(result);
+                MOSCalculation.addUDPLoss(Double.valueOf( match.group(2) ) / Double.valueOf( match.group(3) ));
             }
         }
 

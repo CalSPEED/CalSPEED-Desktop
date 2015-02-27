@@ -72,14 +72,14 @@ public class SecureFileTransfer {
      * @return 
      */
     public String send() {
-        JSch jsch = null;
-        Session session = null;
-        Channel channel = null;
-        ChannelSftp c = null;
+        JSch jsch;
+        Session session;
+        Channel channel;
+        ChannelSftp c;
         try {
             jsch = new JSch();
             session = jsch.getSession(username, host, 22);        
-            session.setPassword("SERVER PASSWORD");
+            session.setPassword(password);
             session.setConfig("StrictHostKeyChecking", "no");
             session.connect();
 

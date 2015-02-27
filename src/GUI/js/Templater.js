@@ -29,21 +29,21 @@ var Templater = function() {
             source = $("#" + template + "-template").html();
             template = Handlebars.compile(source);
             finalResults = template( formatResult(results) );
-            $(sourceSelector).html(finalResults);
+            $(sourceSelector).html(finalResults).trigger("contentChange");
         },
 
         prependTemplate : function(sourceSelector, template, results) {
             source = $("#" + template + "-template").html();
             template = Handlebars.compile(source);
             finalResults = template( formatResult(results) );
-            $(sourceSelector).prepend(finalResults);
+            $(sourceSelector).prepend(finalResults).trigger("contentChange");
         },
 
         appendTemplate : function(sourceSelector, template, results) {
             source = $("#" + template + "-template").html();
             template = Handlebars.compile(source);
             finalResults = template( formatResult(results) );
-            $(sourceSelector).append(finalResults);
+            $(sourceSelector).append(finalResults).trigger("contentChange");
         }
-	}
+    };
 }();
