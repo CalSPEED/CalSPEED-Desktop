@@ -122,13 +122,13 @@ public class MOSCalculation {
      * @return average of latency
      */
     public static double getMeanLatency() {
-	// EXCEL Function
+    // EXCEL Function
         //=AVERAGE(V2,Z2)
 
-	// Translated
+    // Translated
         // return (V2 + Z2) / 2;
         
-	// Further translate
+    // Further translate
         // return (wPktAvg + ePktAvg) / 2;
         double result = average(pingAverages);
         if (Globals.DEBUG_MOS) {
@@ -142,13 +142,13 @@ public class MOSCalculation {
      * @return average of jitter packets
      */
     public static double getMeanJitter() {
-	// EXCEL Function
+    // EXCEL Function
         //=AVERAGE(AB2,AE2)
 
-	// Translated
+    // Translated
         // return (AB2 + AE2) / 2;
         
-	// Further translate
+    // Further translate
         // return (wUDP_Jitter + eUDP_Jitter) / 2;
         double result = average(udpJitters);
         if (Globals.DEBUG_MOS) {
@@ -162,13 +162,13 @@ public class MOSCalculation {
      * @return average of udp packet loss
      */
     public static double getMeanUDPPacketLoss() {
-	// EXCEL Function
+    // EXCEL Function
         //=AVERAGE(AC2,AF2)
 
-	// Translated
+    // Translated
         // return (AC2 + AF2) / 2;
         
-	// Further translate
+    // Further translate
         // return (wUDP_Loss + eUDP_Loss) / 2;
         double result = average(udpLosses);
         if (Globals.DEBUG_MOS) {
@@ -182,13 +182,14 @@ public class MOSCalculation {
      * @return effective latency
      */
     public static double getEffectiveLatency() {
-	// EXCEL Function
+    // EXCEL Function
         //=AL2+AM2*2+10
         
-	// Translated
+    // Translated
         // return Mean_Latency + Mean_Jitter * 2 + 10;
         double meanLatency = getMeanLatency();
-        double result = meanLatency + meanLatency * 2 + 10;
+        double meanJitter = getMeanJitter();
+        double result = meanLatency + meanJitter * 2 + 10;
         if (Globals.DEBUG_MOS) {
             System.out.println("MOS Effective Latency: " + result);
         }
@@ -200,17 +201,17 @@ public class MOSCalculation {
      * @return R-Value
      */
     public static double getRValue() {
-	// EXCEL Function
+    // EXCEL Function
         //=IF(AO2<160,(93.2-(AO2/40)-2.5*AN2),(93.2-(AO2-120)/10-2.5*AN2))
 
-	// Translated
+    // Translated
         // if (AO2 < 160) {
         //   return 93.2 - (AO2/40) - 2.5 * AN2;
         // } else {
         //   return 93.2 - (AO2 - 120) / 10 - 2.5 * AN2;
         // }
         
-	// Further translate
+    // Further translate
         // if (Effective_Latency < 160) {
         //   return 93.2 - (Effective_Latency/40) - 2.5 * Mean_Packet_Loss;
         // } else {
@@ -239,21 +240,21 @@ public class MOSCalculation {
      * @return calculated MOS value
      */
     public static double getMOS() {
-	// EXCEL Function
+    // EXCEL Function
         //=IF(AND(ISNUMBER(AP2)),IF(AND(AP2>0,AP2<101),(1+0.035*AP2+0.000007*AP2*(AP2-60)*(100-AP2)),0),0)
 
-	// Translated
+    // Translated
         // if (ISNUMBER(AP2)) {
         //   if (AP2 > 0 && AP2 < 101) {
         //     1 + 0.035 * AP2 + 0.000007 * AP2 * (AP2 - 60) * (100 - AP2)
         //   } else {
         //     return 0;
-        //	 }
+        //   }
         // } else {
         //   return 0;
         // }
         
-	// Further translate
+    // Further translate
         // if (R-Value > 0 && R-Value < 101) {
         //   return 1 + 0.035 * R-Value + 0.000007 * R-Value * (R-Value - 60) * (100 - R-Value)
         // } else {

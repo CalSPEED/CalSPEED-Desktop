@@ -46,54 +46,139 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import Viewer.ArcGis;
+import com.google.gson.internal.StringMap;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.apache.commons.io.IOUtils;
+import java.awt.Desktop;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class MainController extends StackPane {
 
+    private static final String URL = "http://maps.googleapis.com/maps/api/geocode/json";
     WebView webView = new WebView();
     WebEngine webEngine = webView.getEngine();
     JSObject jsTester; //Tester.js
     JSObject jsTemplater; //Templater.js
+    JSObject jsLocation; //Location.js
+    JSObject jsNavigator; //Navigator.js
+    JSObject jsViewerMsg;
     Result testResult;
     private boolean testRunning = false;
     private Thread testThread;
     private int tests_complete;
     private ArcGis advertisedGis;
     private ArcGis predictedGis;
-
+    Database database;
+    IPerf iPerf = new IPerf();
+    private Object monitor = new Object();
+    
     public MainController() {
         webView.setContextMenuEnabled(false);
-        final Database database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
-//      database.dropTable();
+        database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
+        //database.dropTable();
         database.createInit();
+        //database.dropValidationTable();
+        database.createValidationTable();
         database.updateTable();
+        database.updateTableVideo();
+        
+        database.createLocationTable();
+        database.updateLocationTable();
+                
         final String data = database.selectData();
-
+        
         final URL url = getClass().getResource("index.html");
+        
         webEngine.load(url.toExternalForm());
 
         webEngine.getLoadWorker().stateProperty().addListener(
-                new ChangeListener<Worker.State>(){
-                    @Override
-                    public void changed(ObservableValue<? extends Worker.State> ov, Worker.State oldState, Worker.State newState) {
-                        if(newState == Worker.State.SUCCEEDED){
-                            jsTester = (JSObject) webEngine.executeScript("Tester");
-                            jsTester.setMember("app", this);
-                            
-                            // Set up the viewer message to display or not
-                            ((JSObject) webEngine.executeScript("ViewerMsg")).call("setMessageDisplay", true);
+            new ChangeListener<Worker.State>(){
+                @Override
+                public void changed(ObservableValue<? extends Worker.State> ov, Worker.State oldState, Worker.State newState) {
+                    if(newState == Worker.State.SUCCEEDED){
+                        jsTester = (JSObject) webEngine.executeScript("Tester");
+                        jsTester.setMember("app", this);
 
-                            jsTemplater = (JSObject) webEngine.executeScript("Templater");
-                            String []args = { "#history-results", "result", data };
-                            jsTemplater.call("loadTemplate", args);
+                        jsLocation = (JSObject) webEngine.executeScript("Location");
+                        jsLocation.setMember("app",this);
+                        
+                        jsNavigator = (JSObject) webEngine.executeScript("Navigator");
+                        jsNavigator.setMember("app", this);
+
+                        // Set up the viewer message to display or not
+                        // Causes history to break when wifi is off
+                        jsViewerMsg = (JSObject) webEngine.executeScript("ViewerMsg");
+                        jsViewerMsg.call("setMessageDisplay", true);
+                        
+                        jsTemplater = (JSObject) webEngine.executeScript("Templater");
+                        String []args = { "#history-results", "result", data };
+                        jsTemplater.call("loadTemplate", args);
+                        database.debugLocation();
+                        //database.debug();
+
+                        if (!Database.LocationTableEmpty()){
+                            if (Database.getTypeID().equals("0")){
+                                
+                                jsTester.call("loadInput", Database.getAddress());
+                                
+                            }
+
+                            else if (Database.getTypeID().equals("1")){
+                                 jsTester.call("loadInput", Database.getLatitude() + ", " + 
+                                         Database.getLongitude() + " (" + database.getLocation() + ")");
+
+                            }
+
+                            else{
+                                jsTester.call("loadInput", Database.getAddress());
+                            }
                         }
+                        else {
+                            LocationService.setLocation();
+                            jsTester.call("loadInput", LocationService.getLocation());
+                        }
+
                     }
-                });
+                }
+            });
+        
+        
 
         jsTester = jsTemplater = (JSObject) webEngine.executeScript("window");
         jsTester.setMember("app", this);
 
         getChildren().add(webView);
     }
+    
+    public void openInBrowser()
+    {
+        if(Desktop.isDesktopSupported())
+        {
+            try {
+                try {
+                    Desktop.getDesktop().browse(new URI("https://www.google.com/maps"));
+                } catch (URISyntaxException ex) {
+                    Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(MainController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
+    
 
     /**
      * This will initiate the test and call the necessary tasks that will sequentially then be monitored for setting values on the gui.
@@ -101,129 +186,183 @@ public class MainController extends StackPane {
     public void startTest() {
         //simple way to prevent a test to be run more than once at a time
         if(testRunning) {
-            return;
+            jsTester.call("hideConnection"); //fixes bug when start button is clicked multiple times
+        } else {
+            testRunning = true;
+            jsViewerMsg.call("setMessageDisplay", false);
+            MOSCalculation.clearData();
+
+            Calendar cal = Calendar.getInstance();
+            testResult = new Result();
+
+            testResult.time = new SimpleDateFormat("HH:mm").format(cal.getTime());
+            testResult.date = new SimpleDateFormat("dd MMM, yyyy").format(cal.getTime());
+            testResult.timestamp = String.valueOf(cal.getTimeInMillis());
+
+            LocationService.setLocation();
+            if (Database.LocationTableEmpty()){ //use wifi's location
+                testResult.location = LocationService.getLocation(); 
+                testResult.address = LocationService.getLocation();
+            }
+
+            else {
+                testResult.location = database.getLocation();
+                testResult.address = Database.getAddress() + " (" + Database.getLatitude() + ", " + 
+                        Database.getLongitude() + ")";
+            }
+
+            testResult.lat = LocationService.getLat();
+            testResult.lng = LocationService.getLng();
+            testResult.videoDetails = Tester.videoDetails;
+
+            if (!iPerf.testIP("IP ADDRESS", 4)) 
+            {
+                jsTester.call("toggleTestingInProgress", "false"); //show connection message
+                FilePrep.setTimestamp(testResult.timestamp);
+                FilePrep.addDetail("fail");
+                testResult.type = "N/A";
+                testResult.upload = 0.0;
+                testResult.download = 0.0;
+                testResult.jitter = 0.0;
+                testResult.delay = 0.0;
+                testResult.mos = 0.0;    
+                testResult.videoDetails = "N/A";
+
+                //database.insertData(testResult);
+                //database.debug();            
+                //FilePrep.saveToFile();
+                //insert data into
+                //database.insertData(testResult);
+                //testRunning = false;
+
+                Platform.runLater(new Runnable() 
+                {
+                    @Override
+                    public void run() {
+                        Database database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
+                        Integer[] arg = { 4 };
+                        System.out.println("This is the Runnable attempt to save to File from failed state");
+                        FilePrep.saveToFile();
+                        //insert data into
+                        database.insertData(testResult);
+                        String[] args ={"#history-results","result",database.selectData()};
+                        jsTemplater.call("loadTemplate", args);
+                    }
+                });
+                jsTester.call("resetClick");
+                testRunning = false;
+                return;
+            }
+            else
+                jsTester.call("hideConnection");
+
+            testRunning = true;
+            Integer[] arg = { 1 }; //once you click it it should go on
+            jsTester.call("setPhase", arg);
+
+            Tester[] tests = { new TCPTester(Globals.WEST_SERVER),
+                               new PingTester(Globals.WEST_SERVER),
+                               new UDPTester(Globals.WEST_SERVER),
+                               new TCPTester(Globals.EAST_SERVER),
+                               new PingTester(Globals.EAST_SERVER),
+                               new UDPTester(Globals.EAST_SERVER)};
+
+            //Register generic listeners
+            TCPTester.uploadProperty().addListener((o, oldVal, newVal) -> {
+                if((Double)newVal > 0.0) {
+                    testResult.upload = Double.valueOf(String.format("%1$.2f", ((Double) newVal / 1024)));
+                }
+                tests_complete = 0;
+                final Integer[] arg1 = { tests_complete };
+                final Double[] result = { testResult.upload };
+
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        jsTester.call("setTestsComplete", arg1); //make sure it's the correct test
+                        jsTester.call("setTestResult", result);
+
+                    }
+                });
+            });
+
+            TCPTester.downloadProperty().addListener((o, oldVal, newVal) -> {
+                if((Double)newVal > 0.0) {
+                    testResult.download = Double.valueOf(String.format("%1$.2f", ((Double) newVal / 1024)));
+                }
+
+                tests_complete = 1;
+                final Integer[] arg1 = { tests_complete };
+                final Double[] result = { testResult.download };
+
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        jsTester.call("setTestsComplete", arg1);
+                        //System.out.println("setting download value");
+                        jsTester.call("setTestResult", result);
+                        //System.out.println("download value set");
+                    }
+                });
+            });
+
+            PingTester.pingProperty().addListener(new ChangeListener(){
+                @Override public void changed(ObservableValue o,Object oldVal, Object newVal){
+                    if((Double) newVal > 0.0) {
+                        testResult.delay = Double.valueOf(String.format("%1$.2f", ((Double) newVal)));
+                    }
+                    tests_complete = 2;
+                    final Integer[] arg1 = { tests_complete };
+                    final Double[] result = { testResult.delay };
+
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            jsTester.call("setTestsComplete", arg1);
+                            jsTester.call("setTestResult", result);
+                        }
+                    });
+                }
+            });
+
+            UDPTester.udpProperty().addListener(new ChangeListener(){
+                @Override public void changed(ObservableValue o,Object oldVal, Object newVal){
+                    if((Double) newVal > 0.0) {
+                        testResult.jitter = Double.valueOf(String.format("%1$.2f", ((Double) newVal)));
+                    }
+                    tests_complete = 3;
+                    final Integer[] arg1 = { tests_complete };
+                    final Double[] result = { testResult.jitter };
+
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            jsTester.call("setTestsComplete", arg1);
+                            jsTester.call("setTestResult", result);
+                        }
+                    });
+                }
+            });
+    //Keep here to maybe one day enable error messages for the user...
+    //        Tester.alertMessageProperty().addListener(new ChangeListener(){
+    //            @Override public void changed(ObservableValue o,Object oldVal, Object newVal){
+    //                Platform.runLater(new Runnable() {
+    //                    @Override
+    //                    public void run() {
+    //                        testRunning = false;
+    //                        Integer[] arg = { 0 };
+    //                        jsTester.call("setPhase", arg);
+    //                        //second argument is the html class name for the font-awesome (fa) icon
+    //                        String[] args = { "<h1 class='text-center'>" + newVal + "</h1>", "fa-exclamation-triangle", "small" };
+    //                        jsTester.call("showMessage", args);
+    //                    }
+    //                });
+    //            }
+    //        });
+
+            FilePrep.setTimestamp(testResult.timestamp);
+            runAllTests(tests, 0);
         }
-        MOSCalculation.clearData();
-        
-        Calendar cal = Calendar.getInstance();
-        testResult = new Result();
-
-        testRunning = true;
-
-        Integer[] arg = { 1 }; //once you click it it should go on
-        jsTester.call("setPhase", arg);
-
-        testResult.time = new SimpleDateFormat("HH:mm").format(cal.getTime());
-        testResult.date = new SimpleDateFormat("dd MMM, yyyy").format(cal.getTime());
-        testResult.timestamp = String.valueOf(cal.getTimeInMillis());
-
-        LocationService.setLocation();
-        testResult.location = LocationService.getLocation(); //need to write a method that will actually do some reverse geocoding mumbo jumbo
-        testResult.lat = LocationService.getLat();
-        testResult.lng = LocationService.getLng();
-
-        Tester[] tests = { new TCPTester(Globals.WEST_SERVER),
-                           new PingTester(Globals.WEST_SERVER),
-                           new UDPTester(Globals.WEST_SERVER),
-                           new TCPTester(Globals.EAST_SERVER),
-                           new PingTester(Globals.EAST_SERVER),
-                           new UDPTester(Globals.EAST_SERVER),};
-
-        //Register generic listeners
-        TCPTester.uploadProperty().addListener((o, oldVal, newVal) -> {
-            if((Double)newVal > 0.0) {
-                testResult.upload = Double.valueOf(String.format("%1$,.2f", ((Double) newVal / 1024)));
-            }
-            tests_complete = 0;
-            final Integer[] arg1 = { tests_complete };
-            final Double[] result = { testResult.upload };
-
-            Platform.runLater(new Runnable() {
-                @Override
-                public void run() {
-                    jsTester.call("setTestsComplete", arg1); //make sure it's the correct test
-                    jsTester.call("setTestResult", result);
-                }
-            });
-        });
-
-        TCPTester.downloadProperty().addListener((o, oldVal, newVal) -> {
-            if((Double)newVal > 0.0) {
-                testResult.download = Double.valueOf(String.format("%1$,.2f", ((Double) newVal / 1024)));
-            }
-
-            tests_complete = 1;
-            final Integer[] arg1 = { tests_complete };
-            final Double[] result = { testResult.download };
-
-            Platform.runLater(new Runnable() {
-                @Override
-                public void run() {
-                    jsTester.call("setTestsComplete", arg1);
-                    //System.out.println("setting download value");
-                    jsTester.call("setTestResult", result);
-                    //System.out.println("download value set");
-                }
-            });
-        });
-
-        PingTester.pingProperty().addListener(new ChangeListener(){
-            @Override public void changed(ObservableValue o,Object oldVal, Object newVal){
-                if((Double) newVal > 0.0) {
-                    testResult.delay = Double.valueOf(String.format("%1$,.2f", ((Double) newVal)));
-                }
-                tests_complete = 2;
-                final Integer[] arg1 = { tests_complete };
-                final Double[] result = { testResult.delay };
-
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        jsTester.call("setTestsComplete", arg1);
-                        jsTester.call("setTestResult", result);
-                    }
-                });
-            }
-        });
-
-        UDPTester.udpProperty().addListener(new ChangeListener(){
-            @Override public void changed(ObservableValue o,Object oldVal, Object newVal){
-                if((Double) newVal > 0.0) {
-                    testResult.jitter = Double.valueOf(String.format("%1$,.2f", ((Double) newVal)));
-                }
-                tests_complete = 3;
-                final Integer[] arg1 = { tests_complete };
-                final Double[] result = { testResult.jitter };
-
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        jsTester.call("setTestsComplete", arg1);
-                        jsTester.call("setTestResult", result);
-                    }
-                });
-            }
-        });
-//Keep here to maybe one day enable error messages for the user...
-//        Tester.alertMessageProperty().addListener(new ChangeListener(){
-//            @Override public void changed(ObservableValue o,Object oldVal, Object newVal){
-//                Platform.runLater(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        testRunning = false;
-//                        Integer[] arg = { 0 };
-//                        jsTester.call("setPhase", arg);
-//                        //second argument is the html class name for the font-awesome (fa) icon
-//                        String[] args = { "<h1 class='text-center'>" + newVal + "</h1>", "fa-exclamation-triangle", "small" };
-//                        jsTester.call("showMessage", args);
-//                    }
-//                });
-//            }
-//        });
-
-        FilePrep.setTimestamp(testResult.timestamp);
-        
-        runAllTests(tests, 0);
     }
 
     /**
@@ -239,24 +378,34 @@ public class MainController extends StackPane {
                 @Override
                 public void changed(ObservableValue o, Object oldVal, Object newVal) {
                         testResult.mos = MOSCalculation.getMOS();
+                        testResult.video = Tester.calcVideo();
+                        testResult.conference = Tester.calcConference();
+                        testResult.videoDetails = Tester.videoDetails;
+                        testResult.conferenceDetails = Tester.conferenceDetails;
+                        //Tester.printMaps();
+                        Tester.resetScores();
                         final String result = jsonParser.toJson(testResult);
 
                         Platform.runLater(new Runnable() {
                             @Override
                             public void run() {
+                                jsTester.call("resetClick");
+                                testRunning = false;
+                                jsNavigator.call("setTestLock", false);
+                                jsViewerMsg.call("setMessageDisplay", true);
                                 Database database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
                                 Integer[] arg = { 4 };
                                 jsTester.call("setTestsComplete", arg);
                                 String[] args = {"#final-results", "finish", result};
                                 jsTemplater.call("loadTemplate", args);
                                 FilePrep.saveToFile();
+                                //insert data into
                                 database.insertData(testResult);
                                 args[0] = "#history-results";
                                 args[1] = "result";
                                 args[2] = database.selectData();
                                 jsTemplater.call("loadTemplate", args);
                                 System.out.println("MOS: " + MOSCalculation.getMOS());
-                                testRunning = false;
                             }
                         });
                 }
@@ -278,7 +427,6 @@ public class MainController extends StackPane {
                 }
             });
         }
-
         FilePrep.addDetail(tests[current_test].whichTest());
         //System.out.println("started another thread: " + current_test);
         testThread = new Thread(tests[current_test]);
@@ -359,33 +507,12 @@ public class MainController extends StackPane {
             }
         }
         //this way we run the predicted and advertised data requests at the "same" time
-        predictedGis = new ArcGis(lng, lat, "predicted");
         advertisedGis = new ArcGis(lng, lat, "advertised");
 
         //kick off the threads
-        Thread predictedThread = new Thread(predictedGis);
-        predictedThread.setDaemon(true);
-        predictedThread.start();
         Thread advertisedThread = new Thread(advertisedGis);
         advertisedThread.setDaemon(true);
         advertisedThread.start();
-
-        predictedGis.finalValueProperty().addListener(new ChangeListener() {
-            @Override
-            public void changed(ObservableValue o, Object oldVal, Object newVal) {
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        String value = (String) newVal;
-                        if( value.equals("error") ) {
-                            value = ArcGis.getJSONError();
-                        }
-                        String[] args = {"#estimated-mobile", "viewer-results", value};
-                        jsTemplater.call("loadTemplate", args);
-                    }
-                });
-            }
-        });
 
         advertisedGis.finalValueProperty().addListener(new ChangeListener() {
             @Override
@@ -397,29 +524,79 @@ public class MainController extends StackPane {
                         String value = (String) newVal;
                         if( !value.equals("error") ) {
                             String advertisedFixed = ArcGis.getByType((String) newVal, "Fixed");
+                            System.out.println("advertised fixed: " + advertisedFixed);
                             if(advertisedFixed.equals("error")) {
                                 advertisedFixed = ArcGis.getJSONError();
                             }
                             String[] fixedArgs = {"#advertised-fixed", "viewer-results", advertisedFixed};
                             jsTemplater.call("loadTemplate", fixedArgs);
                             String advertisedMobile = ArcGis.getByType((String) newVal, "Mobile");
+                            System.out.println("advertised mobile: " + advertisedMobile);
                             if(advertisedMobile.equals("error")) {
                                 advertisedMobile = ArcGis.getJSONError();
                             }
                             String[] mobileArgs = {"#advertised-mobile", "viewer-results", advertisedMobile};
                             jsTemplater.call("loadTemplate", mobileArgs);
-                            String advertisedSatellite = ArcGis.getByType((String) newVal, "Satellite");
-                            if(advertisedSatellite.equals("error")) {
-                                advertisedSatellite = ArcGis.getJSONError();
-                            }
-                            String[] satelliteArgs = {"#advertised-satellite", "viewer-results", advertisedSatellite};
-                            jsTemplater.call("loadTemplate", satelliteArgs);
-                        } else {
-
                         }
                     }
                 });
             }
         });
     }
+    
+    public void processLocation()
+    {
+        jsLocation = (JSObject) webEngine.executeScript("Location");
+        jsTester = (JSObject) webEngine.executeScript("Tester");//will have to switch to one in location
+         //jsTester.setMember("app", this);
+         jsLocation.setMember("app",this);
+       //Stringtemp = (String) jsTester.call("doThis");
+        
+        String address = (String) jsLocation.call("getAddress");
+        String lat = (String) jsLocation.call("getLat");
+        String lng = (String) jsLocation.call("getLong");
+        
+        if(!(address.equals("") && (lat.equals("") || lng.equals("")))) //if either address or latlong is valid
+        {
+            String latlng = lat + "," + lng;
+            //locationProcess(address, latlng);
+        }
+
+    }
+    //Terms methods to be called in Tester.js
+    public String getTermsValue()
+    {
+        //String temp = database.getTermsValue();
+        //System.out.println("Terms Value: " + temp + ".");
+        return database.getTermsValue();
+    }
+    
+    //insert agree value to validation table
+    public void insertTermsValue()
+    {
+        database.insertTermsValue();
+    }
+    
+    public void exitOnTerms()
+    {
+        System.exit(1);
+    }
+    
+    
+    public void insertLocationData(String address, String lat, String lng, String city, String zip, String type){
+        //System.out.println("printing " + address);
+        database.insertLocationData(address, lat, lng, city, zip, type);
+            
+        }
+    
+    public void printLocationData(String address, String lat, String lng, String city, String zip){
+        System.out.println("address: " + address);
+        System.out.println("lat: " + lat);
+        System.out.println("long: " + lng);
+        System.out.println("city: " + city);
+        System.out.println("zip: " + zip);
+    }
+    
+    
 }
+

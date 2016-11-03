@@ -43,6 +43,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
+import Database.Database;
 
 public class FilePrep {
     private static String details = "";
@@ -87,6 +88,8 @@ public class FilePrep {
         } else if (detail.contains("iperf")) {
             System.out.println("Iperf command line:" + detail);
             details += "Iperf command line:" + detail.substring(detail.indexOf("iperf"));
+        } else if (detail.equals("fail")){
+            details += "Failed Connectivity Test.";
         } else {
             details += detail;
         }
@@ -105,6 +108,7 @@ public class FilePrep {
         PrintWriter file = null;
         File uploadDir = null;
         SimpleDateFormat fileDateFormat = new SimpleDateFormat("MMddyyyykkmmssS");
+        String VERSION = "0.0.0";//change here to change the version that is recorded in the data file 
         
         try {
             uploadDir = new File(Globals.USER_DIR + File.separator + "uploads");
@@ -119,9 +123,9 @@ public class FilePrep {
             file = new PrintWriter(Globals.USER_DIR + File.separator + "uploads" + File.separator + fileDateFormat.format(new Date()) + ".txt");
             
             if(Globals.IS_OSX) {
-                file.println("Crowd Source OS X Desktop v1.2.1");
+                file.println("Crowd Source OS X Desktop v" + VERSION);//version number on the data files
             } else {
-                file.println("Crowd Source Windows Desktop v1.2.1");
+                file.println("Crowd Source Windows Desktop v" + VERSION);
             }
 
             Calendar cal = Calendar.getInstance();
@@ -131,8 +135,16 @@ public class FilePrep {
             file.println("Network ISP: " + LocationService.getCarrier());
             file.println("OS: Name = " +  System.getProperty("os.name") + ", Architecture = " + System.getProperty("os.arch"));
             file.println("Version: " + System.getProperty("os.version"));
-            file.println("IPLastKnownLat: " + LocationService.getLat());
-            file.println("IPLastKnownLng: " + LocationService.getLng() + System.lineSeparator());
+            file.println("UserSettingAddress: " + Database.getAddress());
+            if (Database.LocationTableEmpty()){
+                file.println("IPLastKnownLat: " + LocationService.getLat());
+                file.println("IPLastKnownLng: " + LocationService.getLng() + System.lineSeparator());
+            }
+            
+            else{
+                file.println("IPLastKnownLat: " + Database.getLatitude());
+                file.println("IPLastKnownLng: " + Database.getLongitude() + System.lineSeparator());
+            }
 
             Enumeration<NetworkInterface> nets;
             try {
@@ -179,7 +191,7 @@ public class FilePrep {
         System.out.println("Debug: uploadPath for getAllDetailFiles " + uploadPath);
         try {
             Files.walk(Paths.get(uploadPath)).forEach(filePath -> {
-                String filename = filePath.toString().replace(uploadPath,"");
+                String filename = filePath.toString().replace(uploadPath, "");
                 System.out.println("Debug: " + filename);
                 if (filename.endsWith(".txt")) {
                     detailFiles.add(filename);
@@ -195,7 +207,7 @@ public class FilePrep {
     
     /**
      * Upload all the files onto the server. It will also upload files that were
-     *  left behind by previous tests if it exists.
+     *  left behind by previous tests if they exist.
      */
     private static void saveAllFiles() {
         ArrayList <String> detailFiles = getAllDetailFiles();
@@ -204,7 +216,7 @@ public class FilePrep {
         if (!detailFiles.isEmpty()) {
             for (String detailFile : detailFiles) {
 //                System.out.println("Debug: File " + detailFile + " exists.");
-                SecureFileTransfer sft = new SecureFileTransfer(
+                        SecureFileTransfer sft = new SecureFileTransfer(
                         "USERNAME",
                         "PASSWORD",
                         "IP ADDRESS",
@@ -221,7 +233,6 @@ public class FilePrep {
                 }
             }
         }
-        
     }
     
     /**

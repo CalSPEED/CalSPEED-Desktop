@@ -1,4 +1,3 @@
-/*
 Copyright (c) 2014, California State University Monterey Bay (CSUMB).
 All rights reserved.
 
@@ -26,53 +25,3 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-package GUI;
-
-import Tester.utils.FilePrep;
-import Tester.utils.IPerf;
-import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.scene.image.Image;
-import javafx.stage.Stage;
-
-public class Main extends Application {
-
-    private Scene scene;
-    MainController webView;
-
-    public static void main(String[] args) {
-        launch(args);
-    }
-
-    @Override
-    public void start(Stage primaryStage) throws Exception {
-
-        IPerf.prepareFiles();
-        IPerf.copyFromJar("/GUI/images/", "logo.png");
-
-        primaryStage.setTitle("CalSPEED");
-        primaryStage.getIcons().add(new Image("file:logo.png"));
-
-        webView = new MainController();
-        scene = new Scene(webView, 1180, 600);
-
-        primaryStage.setScene(scene);
-        primaryStage.setMinHeight(600);
-        primaryStage.setMinWidth(1000);
-        primaryStage.show();
-    }
-
-    @Override
-    public void stop() {
-        webView.stopTest(); //hopefully it will interrupt the sucker
-        IPerf.cleanUpFiles();
-        try {
-            FilePrep.cleanUpDir();
-        }
-        catch(Exception e) {
-            System.out.println("InvocationTargetException caught");
-        }
-    }
-
-}

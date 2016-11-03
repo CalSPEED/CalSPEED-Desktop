@@ -88,7 +88,6 @@ public class SecureFileTransfer {
             c = (ChannelSftp) channel;
 
         } catch (Exception e) {
-            e.printStackTrace();
             return("Upload File error--Unable to connect to server for upload.\n");
         }
 
@@ -99,7 +98,6 @@ public class SecureFileTransfer {
             
             c.put(fsrc, fdest);
         } catch (Exception e) {
-            e.printStackTrace();
             return("Upload File error--unable to transfer data.\n");
         }
 

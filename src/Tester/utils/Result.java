@@ -33,6 +33,7 @@ package Tester.utils;
 public class Result {
     public String type = "desktop";
     public String location;
+    public String address;
     public String timestamp;
     public String date;
     public String lat;
@@ -43,4 +44,8 @@ public class Result {
     public Double jitter = -1.0;
     public Double delay = -1.0;
     public Double mos = -1.0;
+    public String video;
+    public String conference;
+    public String videoDetails;
+    public String conferenceDetails;
 }

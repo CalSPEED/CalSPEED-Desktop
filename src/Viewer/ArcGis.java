@@ -29,13 +29,13 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 package Viewer;
 
+import Tester.utils.Globals;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import com.google.gson.*;
@@ -43,6 +43,8 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.concurrent.Task;
 import Viewer.utils.GisDownloadComparator;
+import Viewer.utils.TechnologyCode;
+import java.util.TreeSet;
 /**
  * Simply meant to grab results from ARCGis. Format them and send them back (in the form of json)
  */
@@ -66,10 +68,7 @@ public class ArcGis extends Task {
     public Void call() {
         if(type.equals("advertised")) {
             getAdvertisedData(); //they should be on their own threads
-        } else {
-            getPredictedData();
         }
-
         return null;
     }
 
@@ -78,23 +77,10 @@ public class ArcGis extends Task {
             String[] coordinates = latLngToXY(this.lat, this.lng);
             //only should get the location when coordinates are actually returned...
             if(coordinates != null) {
-                String allLines = urlRequestHelper("http://IP_ADDRESS/ArcGIS/rest/services/MOBILE_VIEWER_APP_mod/MapServer/0/query?text=&geometry=%7B%22x%22%3A\"" + coordinates[0] + "\"%2C%22y%22%3A\"" + coordinates[1] + "\"%2C%22spatialReference%22%3A%7B%22wkid%22%3A102113%7D%7D&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false&maxAllowableOffset=&outSR=&outFields=*&f=pjson");
-                setFinalValueProperty(sortJsonResults(allLines, "DBANAME", "MAXADUP", "MAXADDOWN"));
-                System.out.println(sortJsonResults(allLines, "DBANAME", "MAXADUP", "MAXADDOWN"));
-            }
-        } catch(Exception e) {
-            setFinalValueProperty(getJSONError());
-        }
-    }
-
-    protected void getPredictedData() {
-        try {
-            String[] coordinates = latLngToXY(this.lat, this.lng);
-            //only should get the location when coordinates are actually returned...
-            if(coordinates != null) {
-                String allLines = urlRequestHelper("http://IP_ADDRESS/ArcGIS/rest/services/MOBILE_VIEWER_APP_mod/MapServer/1/query?text=&geometry={%22x%22%3A" + coordinates[0] + "%2C%22y%22%3A" + coordinates[1] + "%2C%22spatialReference%22%3A{%22wkid%22%3A102113}}&geometryType=esriGeometryPoint&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false&maxAllowableOffset=&outSR=&outFields=*&f=json");
-                setFinalValueProperty( sortJsonResults(allLines, "DBANAME", "MUP", "MDOWN") );
-                System.out.println( sortJsonResults(allLines, "DBANAME", "MUP", "MDOWN") );
+                String allLines = urlRequestHelper(String.format(Globals.ARC_GIS_SERVER_URL, coordinates[0], coordinates[1]));
+                JsonArray jarray = getFeaturesAsJsonArray(allLines);
+                String reducedJsonObjects = reduceData(jarray);
+                setFinalValueProperty(reducedJsonObjects);
             }
         } catch(Exception e) {
             setFinalValueProperty(getJSONError());
@@ -108,7 +94,7 @@ public class ArcGis extends Task {
      * @throws IOException
      */
     protected String[] latLngToXY(String lat, String lng) throws IOException {
-        String allLines = urlRequestHelper("http://tasks.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer/project?inSR=4326&outSR=102113&geometries=" + lat + "%2C+" + lng + "&f=pjson");
+        String allLines = urlRequestHelper(String.format(Globals.LATLONG_XY_URL, lat, lng));
 
         //we got results!
         if(!allLines.equals("")) {
@@ -127,7 +113,6 @@ public class ArcGis extends Task {
 
     protected String urlRequestHelper(String urlString) throws IOException {
         URL url = new URL(urlString);
-        System.out.println(urlString);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
         String line;
@@ -143,89 +128,104 @@ public class ArcGis extends Task {
 
         return allLines;
     }
-
+    
     /**
-     *
      * @param json
-     * @param carrierKey
-     * @param uploadKey
-     * @param downloadKey
+     * @return JsonArray that converts the String response from the URL 
+     * to a JsonArray for easier data manipulation
+     * 
      */
-    protected String sortJsonResults(String json, String carrierKey, String uploadKey, String downloadKey) {
-        //duplicates need to be trimmed out
-        json = trimJsonResults(json, carrierKey, uploadKey, downloadKey);
-        JsonElement jelement = new JsonParser().parse(json);
-        JsonArray jarray = jelement.getAsJsonArray();
-        List<JsonObject> jsonObjects = new ArrayList<JsonObject>();
-
-        for(int i = 0; i < jarray.size(); i++) {
-            jsonObjects.add(jarray.get(i).getAsJsonObject());
+    
+    protected JsonArray getFeaturesAsJsonArray(String json) {
+        JsonElement jelement =  new JsonParser().parse(json);
+        return jelement.getAsJsonObject().get("features").getAsJsonArray();
+    }
+    
+    /**
+     * Reduce the data to just the name, upload value, download value, service 
+     * type,and technology code
+     * @param jsonArray
+     * @return 
+     */
+    protected String reduceData(JsonArray jsonArray) {
+        String uploadKey;
+        String downloadKey;
+        TreeSet<JsonObject> reducedJsonData = new TreeSet<>(
+                new GisDownloadComparator(
+                        Globals.dbANAME, "UploadKey", "DownloadKey", "TechCode")
+        );
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JsonObject attribute = jsonArray.get(i).getAsJsonObject()
+                    .get("attributes").getAsJsonObject();
+            
+            if (attribute.get("ServiceTyp").getAsString().equals("Fixed")) {
+                uploadKey = Globals.maxADUP;
+                downloadKey = Globals.maxADDOWN;
+            } else {
+                uploadKey = Globals.interpMBUp;
+                downloadKey = Globals.interpMBDN;
+            }
+            String uploadValue = 
+                    attribute.get(uploadKey).getAsString().equals(" ") ? "0" 
+                    : attribute.get(uploadKey).getAsString();
+            String downloadValue = 
+                    attribute.get(downloadKey).getAsString().equals(" ") 
+                    ? "0" : attribute.get(downloadKey).getAsString();
+            int techCode = attribute.get("TechCode").getAsInt();
+            String techCodeType = 
+                    TechnologyCode.techCodeDictionary.get(techCode);
+            
+            if (attribute.get("ServiceTyp").getAsString().equals("Fixed")) {
+                uploadValue = convertBandwidthToBucket(uploadValue);
+                downloadValue = convertBandwidthToBucket(downloadValue);
+            }
+            
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.addProperty(Globals.dbANAME, 
+                    attribute.get(Globals.dbANAME).getAsString());
+            jsonObject.addProperty("UploadKey", 
+                    Integer.parseInt(uploadValue));
+            jsonObject.addProperty("DownloadKey", 
+                    Integer.parseInt(downloadValue));
+            jsonObject.addProperty("ServiceTyp", 
+                    attribute.get("ServiceTyp").getAsString());
+            jsonObject.addProperty("TechCode", techCodeType);
+            reducedJsonData.add(jsonObject);
         }
-
-        //now we can sort because it's in a collection
-        Collections.sort( jsonObjects, new GisDownloadComparator(carrierKey, uploadKey, downloadKey) );
-
-        return new Gson().toJson(jsonObjects);
+        return new Gson().toJson(reducedJsonData);
     }
 
     /**
-     *
-     * @param json
-     * @param carrierKey
-     * @param uploadKey
-     * @param downloadKey
-     * @return
-     * This method will trim the json results from arcgis so that the results that have a duplicate DBANAME will
-     * use the highest download and upload values. After that we can sort by the highest download and then upload
-     * respectively. NOTE: not heavily tested
+     * @param bandwidth_as_string
+     * @return The bucket size in string
+     * Convert the actual bandwidth values to a bucket size (between 1 and 11)
      */
-    protected String trimJsonResults(String json, String carrierKey,String uploadKey, String downloadKey) {
-        JsonElement jelement = new JsonParser().parse(json);
-        JsonArray jarray = jelement.getAsJsonObject()
-                                   .get("features").getAsJsonArray();
-
-        JsonArray trimmed = new JsonArray();
-        //this assumes that the features have already been sorted properly
-        for(int i = 0; i < jarray.size(); i++) {
-            JsonObject a = jarray.get(i).getAsJsonObject().get("attributes").getAsJsonObject();
-            int aupload = a.get(uploadKey).getAsString().equals(" ") ? 0 : Integer.valueOf(a.get(uploadKey).getAsString());
-            int adownload = a.get(downloadKey).getAsString().equals(" ") ? 0 : Integer.valueOf(a.get(downloadKey).getAsString());
-            for(int j = i; j < jarray.size(); j++) {
-                i = j; //also allows us to skip over the duplicates...
-                JsonObject b = jarray.get(j).getAsJsonObject().get("attributes").getAsJsonObject();
-                int bupload = b.get(uploadKey).getAsString().equals(" ") ? 0 : Integer.valueOf( b.get(uploadKey).getAsString() );
-                int bdownload = b.get(downloadKey).getAsString().equals(" ") ? 0 : Integer.valueOf( b.get(downloadKey).getAsString() );
-                if( !a.get(carrierKey).getAsString().equals( b.get(carrierKey).getAsString() ) ) {
-                    i = j - 1; //allows us to skip over the duplicates...
-                    break;
-                }
-                if( aupload < bupload ) {
-                    aupload = bupload;
-                }
-
-                if( adownload < bdownload ) {
-                    adownload = bdownload;
-                }
-            }
-            //addProperty also overrides the one that existed before...
-            a.addProperty(uploadKey, aupload);
-            a.addProperty(downloadKey, adownload);
-            trimmed.add(a);
-        }
-
-//for debugging
-//        for(int i = 0; i < trimmed.size(); i++) {
-//            JsonObject jobject = trimmed.get(i).getAsJsonObject();
-//            System.out.println( "CARRIER: " + jobject.get(carrierKey).getAsString() );
-//            System.out.println( "   UPLOAD:" + jobject.get(uploadKey).getAsString() );
-//            System.out.println( "   DOWNLOAD:" + jobject.get(downloadKey).getAsString() );
-//            System.out.println( "" );
-//        }
-
-        if(trimmed.size() > 0) {
-            return new Gson().toJson(trimmed);
+    private String convertBandwidthToBucket(String bandwidth_as_string) {
+        Double bandwidth = Double.parseDouble(bandwidth_as_string);
+        if (bandwidth < 0.2) {
+            return "1";
+        } else if (bandwidth >= 0.2 && bandwidth < 0.75) {
+            return "2";
+        } else if (bandwidth >= 0.75 && bandwidth < 1.5) {
+            return "3";
+        } else if (bandwidth >= 1.5 && bandwidth < 3) {
+            return "4";
+        } else if (bandwidth >= 3 && bandwidth < 6) {
+            return "5";
+        } else if (bandwidth >= 6 && bandwidth < 10) {
+            return "6";
+        } else if (bandwidth >= 10 && bandwidth < 25) {
+            return "7";
+        } else if (bandwidth >= 25 && bandwidth < 50) {
+            return "8";
+        } else if (bandwidth >= 50 && bandwidth < 100) {
+            return "9";
+        } else if (bandwidth >= 100 && bandwidth < 1000) {
+            return "10";
+        } else if (bandwidth >= 1000) {
+            return "11";
         } else {
-            return "";
+            return "null";
         }
     }
 
@@ -269,7 +269,7 @@ public class ArcGis extends Task {
             JsonElement jelement = new JsonParser().parse(json);
             JsonArray jarray = jelement.getAsJsonArray();
 
-            List<JsonObject> jsonObjects = new ArrayList<JsonObject>();
+            List<JsonObject> jsonObjects = new ArrayList<>();
             for (int i = 0; i < jarray.size(); i++) {
                 JsonObject jobject = jarray.get(i).getAsJsonObject();
                 jobject = jobject.get("members").getAsJsonObject();
@@ -277,7 +277,6 @@ public class ArcGis extends Task {
                     jsonObjects.add(jobject);
                 }
             }
-
             if (jsonObjects.size() > 0) {
                 return new Gson().toJson(jsonObjects);
             }

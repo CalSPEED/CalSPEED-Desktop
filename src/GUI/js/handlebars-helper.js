@@ -1,5 +1,36 @@
+/*!
+* Copyright (c) 2014, California State University Monterey Bay (CSUMB).
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+* 
+*     1. Redistributions of source code must retain the above copyright notice,
+*        this list of conditions and the following disclaimer.
+* 
+*     2. Redistributions in binary form must reproduce the above
+*            copyright notice, this list of conditions and the following disclaimer in the
+*       documentation and/or other materials provided with the distribution.
+* 
+*     3. Neither the name of the CPUC, CSU Monterey Bay, nor the names of
+*        its contributors may be used to endorse or promote products derived from
+*        this software without specific prior written permission.
+* 
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+* ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+* BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+* OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+* IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 Handlebars.registerHelper("viewerResult", function(value) {
     name = " < RESULT < ";
+    print(value);
     switch(value) {
         case 1:
             result = "RESULT < 200kbs";
@@ -53,20 +84,11 @@ Handlebars.registerHelper("formatResult", function(result, metric) {
 Handlebars.registerHelper("mosGrader", function(mos) {
     mos = parseFloat(mos).toFixed(2);
     switch (true) {
-        case (mos > 4.37):
-            grade = "Excellent";
+        case (mos >= 4.0):
+            grade = "Satisfactory";
             break;
-        case (mos > 4.27 && mos <= 4.37):
-            grade = "Very Good";
-            break;
-        case (mos > 3.99 && mos <= 4.27):
-            grade = "Acceptable";
-            break;
-        case (mos >= 2.5 && mos <= 3.99):
-            grade = "Concerning";
-            break;
-        case (mos < 2.5):
-            grade = "Very Poor";
+        case (mos < 4.0 && mos > 0.0):
+            grade = "Unsatisfactory";
             break;
         default:
             grade = "N/A";
@@ -80,14 +102,14 @@ Handlebars.registerHelper("getPercentage", function(type) {
     max = 11;
 
     if(type == "upload") {
-        if(this.MUP) {
-            return (this.MUP / max * 100) - 9.09090909091;
+        if(this.UploadKey) {
+            return (this.UploadKey / max * 100) - 9.09090909091;
         } else if(this.MAXADUP) {
             return (this.MAXADUP / max * 100) - 9.09090909091;
         }
     } else {
-        if(this.MDOWN) {
-            return (this.MDOWN / max * 100) - 9.09090909091;
+        if(this.DownloadKey) {
+            return (this.DownloadKey / max * 100) - 9.09090909091;
         } else if(this.MAXADDOWN) {
             return (this.MAXADDOWN / max * 100) - 9.09090909091;
         }

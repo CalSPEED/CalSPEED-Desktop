@@ -34,11 +34,9 @@ import javax.swing.ImageIcon;
 public class Globals {
     public static Boolean DEBUG_MOS = false;
     
-//    public static final String testerVersion = "CPUC Tester Beta v2.0";
-
     public static final String serverlist[][]={
-            {"N. California Server","Server IP","Server Port"},
-            {"N. Virginia Server","Server IP","Server Port"}
+      {"N. California Server","Server IP","Server Port"},
+      {"N. Virginia Server","Server IP","Server Port"}
     };
     
     public static final String DB_NAME = "calspeed";
@@ -46,16 +44,8 @@ public class Globals {
     
     public static final String WEST_SERVER = serverlist[0][1];
     public static final String EAST_SERVER = serverlist[1][1];
-    public static final String TCP_PORT = "TCP Port";
-    public static final String UDP_PORT = "UDP Port";
-
-//    public static final String driverID[][]={
-//            {"Verizon","\"@USB\\VID_106C&PID_3718\\*\""},
-//            {"AT&T","\"@USB\\VID_0F3D&PID_68a3\\3*\""},
-//            {"Sprint","\"@USB\\VID_1199&PID_0301\\*\""},
-//            {"Sprint","\"@USB\\VID_198F&PID_0220\\*\""},
-//            {"T-Mobile","\"@USB\\VID_12D1&SUBCLASS_*\""}
-//    };
+    public static final String TCP_PORT = "TCP PORT";
+    public static final String UDP_PORT = "UDP PORT";
 
     public static final Integer NUM_SECS_OF_TEST = 10;
     public static final Integer NUM_TCP_TESTS_PER_SERVER = 4;       // number of TCP tests per server
@@ -63,6 +53,21 @@ public class Globals {
 
     public static final boolean IS_OSX = System.getProperty("os.name").equals("Mac OS X");
     public static final String USER_DIR = System.getProperty("user.dir");
-//    public static final String JAR_FILE = new java.io.File(GUI.Main.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getName();
 
+    public static final boolean doneProg = false;
+    
+    public static final String ARC_GIS_SERVER_URL = "http://IP_ADDRESS/ArcGIS/rest/services/"
+        + "CalSPEED_Mobile_App/MapServer/0/query?text=&geometry=%s,%s&"
+        + "geometryType=esriGeometryPoint&inSR=IN_SECRET&spatialRel=esriSpatialRelIntersects&relationParam"
+        + "=&objectIds=&where=&time=&returnCountOnly=false&returnIdsOnly=false&returnGeometry=false"
+        + "&maxAllowableOffset=&outSR=OUT_SECRET&outFields=*&f=pjson";
+    public static final String LATLONG_XY_URL = "http://IP_ADDRESS/ArcGIS/rest/"
+        + "services/Geometry/GeometryServer/project?inSR=IN_SECRET&outSR=OUT_SECRET&geometries=%s,%s&f=json";
+    
+    public static final String dbANAME = "DBA";
+    public static final String maxADDOWN = "MaxAdDn";
+    public static final String maxADUP = "MaxAdUp";
+    public static final String ServiceTyp = "ServiceTyp";
+    public static final String interpMBDN = "InterpMBDn";
+    public static final String interpMBUp = "InterpMBUp";
 }

@@ -33,6 +33,12 @@ import Tester.utils.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
 
 import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
@@ -52,7 +58,17 @@ public class Tester extends Task {
     protected final static int TEST_CANCELLED = 2;
     protected final static int TEST_FAILED = 3;
     protected Integer currentTest = -1;
-
+    private List<String> elements;
+    private Map<String, String> threadDirections = new HashMap<>();
+    private String UP = "Up";
+    private String DOWN = "Down";
+    private static Map<String, Double> WestUp = new HashMap<>();
+    private static Map<String, Double> WestDown = new HashMap<>();
+    private static Map<String, Double> EastUp = new HashMap<>();
+    private static Map<String, Double> EastDown = new HashMap<>();
+    public static String conferenceDetails;
+    public static String videoDetails;
+    
     //allow messages to be passed to the GUI from the tests (in case a fatal error occurs)
     protected static StringProperty alertMessage = new SimpleStringProperty();
 
@@ -73,6 +89,8 @@ public class Tester extends Task {
                 currentTest = (Integer) newVal;
             }
         });
+        
+        
     }
 
     //Only because it throws an error if this is removed
@@ -139,6 +157,10 @@ public class Tester extends Task {
                 // This is where all the lines show up on the screen
                 FilePrep.addDetail(line);
                 System.out.println(line);
+            
+                if(whichTest().contains("TCP"))
+                    addLineToMetric(line);
+                
                 Double result = processor.getResult(line);
                 if (result != null) {
                    setFinalValue(result);
@@ -241,4 +263,261 @@ public class Tester extends Task {
     }
 
     private void resetCounts() { TESTS_COMPLETE = TEST_COUNT = 0; }
+    
+    private void addLineToMetric(String line){
+        
+        elements = Arrays.asList(line.split("\\s+"));
+        int speed, time, threadID;
+       
+        if (elements.contains("local") && elements.contains("port")) //set direction (up/down)
+            setDirection(elements.get(1));
+        
+        if (elements.size() >= 8) //the lines we care about are greater than 8 fields
+        {
+            speed = elements.indexOf("Kbits/sec") - 1; //find index before speed measurement
+            time = elements.indexOf("sec") - 1; //find index before "sec"
+            threadID = elements.indexOf("[") + 1; //find threadID e.g. 3, 4, 5, 6
+            if (speed >= 0 && time >= 0 && elements.indexOf("[SUM]") == -1
+                    && isValidTime(elements.get(time))) //makes sure that the index is found
+            {
+                addSpeed(elements.get(time), elements.get(speed), elements.get(threadID));
+            }
+            
+        }
+        
+    }
+    
+    public void addSpeed(String time, String speed, String threadID){
+        if (threadDirections.get(threadID).equals(UP))
+        {
+            if (whichTest().contains("West"))
+                addSpeedToStream(WestUp, time, Double.parseDouble(speed));
+            else 
+                addSpeedToStream(EastUp, time, Double.parseDouble(speed));
+        }
+        
+        if (threadDirections.get(threadID).equals(DOWN))
+        {
+            if (whichTest().contains("West"))
+                addSpeedToStream(WestDown, time, Double.parseDouble(speed));
+            else 
+                addSpeedToStream(EastDown, time, Double.parseDouble(speed));
+        }
+        
+    }
+    
+    public void addSpeedToStream(Map <String, Double> map, String time, Double speed){
+        Double tempSpeed = map.get(time);
+        
+        if (tempSpeed == null)
+            map.put(time, speed);
+        else
+            map.put(time, speed + tempSpeed);
+    }
+    
+    public void setDirection(String thread){
+        if (threadDirections.get(thread) == null){
+            threadDirections.put(thread, UP);
+        }
+        else if (threadDirections.get(thread).equals(UP)){
+            threadDirections.put(thread, DOWN);
+        }
+        
+        else if (threadDirections.get(thread).equals(DOWN))
+            threadDirections.put(thread, UP);
+    }
+    
+    public static String calcVideo(){
+        int downHD, downSD, downLS, upHD, upSD, upLS;
+        downHD = downSD = downLS = upHD = upSD = upLS = 0;
+        
+        Map mp = WestDown;
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            if ((double)pair.getValue() > 2500)
+                downHD++;
+            else if ((double)pair.getValue() > 700)
+                downSD++;
+            else
+                downLS++;
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        
+        mp = WestUp;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            if ((double)pair.getValue() > 2500)
+                upHD++;
+            else if ((double)pair.getValue() > 700)
+                upSD++;
+            else
+                upLS++;
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        
+        videoDetails = "West [Down] HD: " + downHD
+                       + ", SD: " + downSD
+                       + ", LS: " + downLS
+                       + " -- West [Up] HD: " + upHD
+                       + " SD: " + upSD
+                       + " LS : " + upLS;
+        
+        if (downHD >= 9)
+            return "High Definition";
+        
+        else if (downHD + downSD >= 9)
+            return "Standard Definition";
+        
+        return "Low Service";
+    }
+    
+    public static String calcConference(){
+        
+        int upHD, upSD, upLS, downHD, downSD, downLS;
+        upHD = upSD = upLS = downHD = downSD = downLS = 0;
+        
+        Map mp = EastUp;
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            if ((double)pair.getValue() > 2500)
+                upHD++;
+            else if ((double)pair.getValue() > 700)
+                upSD++;
+            else
+                upLS++;
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        
+        mp = EastDown;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            if ((double)pair.getValue() > 2500)
+                downHD++;
+            else if ((double)pair.getValue() > 700)
+                downSD++;
+            else
+                downLS++;
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        
+        conferenceDetails = "East [Up] HD: " + upHD
+                       + ", SD: " + upSD
+                       + ", LS: " + upLS;
+        
+        conferenceDetails += " -- East [Down] HD: " + downHD
+                       + ", SD: " + downSD
+                       + ", LS: " + downLS;
+        
+        if (MOSCalculation.getMOS() < 4.0)
+            return "Low Service";
+        
+        else if (downHD >= 9 && upHD >= 9)
+            return "High Definition";
+        
+        else if (upHD + upSD >= 9 && downHD + downSD >= 9)
+            return "Standard Definition";
+        
+        return "Low Service";
+    }
+    
+    public static void resetScores(){
+        Map mp = WestUp;
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            mp.put(pair.getKey(), 0);
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        mp = WestDown;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            mp.put(pair.getKey(), 0);
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        mp = EastUp;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            mp.put(pair.getKey(), 0);
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        mp = EastDown;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            mp.put(pair.getKey(), 0);
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        
+    }
+    
+    boolean isValidTime(String time){
+        if (time.length() == 3)
+            return true;
+        
+        else {
+            if (Double.valueOf(time.substring(time.length() - 4)) <= 10.0)
+            {
+                if (Double.valueOf(time.substring(time.length() - 4))  - 
+                    Double.valueOf(time.substring(0, 3)) != 1)
+                    return false;
+                else
+                    return true;
+            }
+            
+            else
+                return false;
+           
+        }
+    }
+    
+    public static void printMap(Map <String, Double> mp) {
+       
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            System.out.println(pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+    }
+        
+    public static void printMaps(){
+        Map mp = WestUp;
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            System.out.println("west up " + pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        System.out.println("west down now");
+        mp = WestDown;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            System.out.println("west down " + pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        System.out.println("east up now");
+        mp = EastUp;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            System.out.println("east up " + pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        mp = EastDown;
+        it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            System.out.println("east down " + pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+    
+    }
+    
 }

@@ -35,55 +35,71 @@ import java.util.Comparator;
  * Created by micahiriye on 8/13/14.
  */
 public class GisDownloadComparator implements Comparator<JsonObject> {
-    private String carrierKey;
-    private String downloadKey;
-    private String uploadKey;
+    private final String carrierKey;
+    private final String downloadKey;
+    private final String uploadKey;
+    private final String techCode;
 
-    public GisDownloadComparator(String carrierKey, String uploadKey, String downloadKey) {
+    public GisDownloadComparator(String carrierKey, String uploadKey, String downloadKey, String techCode) {
         super();
         this.carrierKey = carrierKey;
         this.uploadKey = uploadKey;
         this.downloadKey = downloadKey;
+        this.techCode = techCode;
     }
 
     public GisDownloadComparator() {
         super();
-        this.carrierKey = "DBANAME";
-        this.uploadKey = "MAXADUP";
-        this.downloadKey = "MAXADDOWN";
+        this.carrierKey = "DBA";
+        this.uploadKey = "UploadKey";
+        this.downloadKey = "DownloadKey";
+        this.techCode = "TechCode";
     }
 
     /**
      *
-     * @param a
-     * @param b
-     * @return
-     * This method might seem complicated but really all it's doing is comparing download speeds, upload speeds, and carrier
-     * speeds between two JsonObjects and sorting them based on that priority (download, then upload, then name)
+     * @param a first JsonObject to compare
+     * @param b second JsonObject to compare
+     * @return comparator value of -1, 0, or 1
+     * This method might seem complicated but really all it's doing is comparing
+     * download speeds, upload speeds, and carrier speeds between two 
+     * JsonObjects and sorting them based on that priority. The priority is by
+     * name, technology description, download speed, upload speed.
      */
     @Override
     public int compare(JsonObject a, JsonObject b) {
-        //need to sort this properly...
-        int aDownload = a.get(downloadKey).getAsString().equals(" ") ? 0 : Integer.valueOf( a.get(downloadKey).getAsString() );
-        int bDownload = b.get(downloadKey).getAsString().equals(" ") ? 0 : Integer.valueOf( b.get(downloadKey).getAsString() );
+        String aName = a.get(carrierKey).getAsString();
+        String bName = b.get(carrierKey).getAsString();
 
-        if(aDownload < bDownload) {
-            return 1;
-        } else if(aDownload > bDownload) {
-            return -1;
-        } else {
-            int aUpload = a.get(uploadKey).getAsString().equals(" ") ? 0 : Integer.valueOf( a.get(uploadKey).getAsString() );
-            int bUpload = b.get(uploadKey).getAsString().equals(" ") ? 0 : Integer.valueOf( b.get(uploadKey).getAsString() );
-            if(aUpload < bUpload) {
-                return 1;
-            } else if(aUpload > bUpload) {
-                return -1;
+        if (aName.compareTo(bName) == 0) {
+            String aTechCode = a.get(techCode).getAsString();
+            String bTechCode = b.get(techCode).getAsString();
+            if (aTechCode.compareTo(bTechCode) == 0) {
+                int aDownload = a.get(downloadKey).getAsString().equals(" ") 
+                        ? 0 
+                        : Integer.valueOf( a.get(downloadKey).getAsString() );
+                int bDownload = b.get(downloadKey).getAsString().equals(" ") 
+                        ? 0 
+                        : Integer.valueOf( b.get(downloadKey).getAsString() );
+
+                if (aDownload < bDownload) {
+                    return 1;
+                } else if(aDownload > bDownload) {
+                    return -1;
+                } else {
+                    int aUpload = a.get(uploadKey).getAsString().equals(" ") 
+                            ? 0 
+                            : Integer.valueOf( a.get(uploadKey).getAsString() );
+                    int bUpload = b.get(uploadKey).getAsString().equals(" ") 
+                            ? 0 
+                            : Integer.valueOf( b.get(uploadKey).getAsString() );
+                    return aUpload > bUpload ? 1 : aUpload < bUpload ? -1 : 0;
+                }
             } else {
-                String aName = a.get(carrierKey).getAsString();
-                String bName = b.get(carrierKey).getAsString();
-
-                return aName.compareTo(bName);
+                return aTechCode.compareTo(bTechCode); 
             }
+        } else {
+            return aName.compareTo(bName);
         }
     }
 }

@@ -110,7 +110,7 @@ public class LocationService {
      * @throws IOException 
      */
     public static ArrayList maxMindInfo(String ip) throws IOException {
-        String license_key = "Maxmind Key";
+        String license_key = "MAXMIND KEY";
         String ip_address = ip;
         ArrayList fields = new ArrayList();
 
