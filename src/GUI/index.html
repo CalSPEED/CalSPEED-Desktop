@@ -1,0 +1,668 @@
+<!doctype html>
+<html>
+<head>
+    <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/bootstrap.custom.min.css" />
+    <link rel="stylesheet" href="css/default.css" />
+    <link rel="stylesheet" href="css/demo.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+       
+    <script src="https://maps.googleapis.com/maps/api/js"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.custom.min.js"></script>
+    <script src="js/simple-tabs-pure-js.min.js"></script>
+    <script src="js/Viewer.js"></script>
+    <script src="js/ViewerMsg.js"></script>
+    <script src="js/velocity.min.js"></script>
+    <script src="js/handlebars.js"></script>
+    <script src="js/handlebars-helper.js"></script>
+    <script src="js/Navigator.js"></script>
+    <script src="js/Tester.js"></script>
+    <script src="js/Templater.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/Location.js"></script>
+    <script src="js/Feedback.js"></script>
+    <script src="js/History.js"></script>
+    
+</head>
+<body onload ="Tester.showTerms();">
+    <!--all of the messages will go here-->
+    <div id="message-backdrop"></div>
+    <div id="message-backdrop-location"></div>
+    <div id="message-wrapper">
+        <div id="message">
+            <div class="header">
+                <h1 class="text-center"><i class="fa fa-exclamation-triangle"></i></h1>
+            </div>
+            <div class="body"></div>
+            <div class="footer">
+                <button id="okButton" class="btn btn-primary" onClick="Tester.hideMessage();">Ok</button>
+            </div>
+        </div>
+    </div>
+<!--scorecard template-->
+<script type="text/x-handlebars-template" id="finish-template">
+    <div class="modal fade" id="resultModal" tabindex="-1" role="dialog" data-keyboard="false" data-backdrop="static">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <h4 class="modal-title text-center" id="resultModalLabel">Results</h4>
+                    <table class="table">
+                        {{#each results}}
+                        <td>
+                            <a data-toggle="tooltip" data-original-title="Upload">
+                                <i class="fa fa-arrow-circle-up"></i>
+                            </a>
+                        </td>
+                        <td>{{formatResult upload "mbps"}}</td>
+                        <td>
+                          <a data-toggle="tooltip" data-original-title="Download">
+                              <i class="fa fa-arrow-circle-down"></i>
+                          </a>
+                        </td>
+                        <td>{{formatResult download "mbps"}}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="Latency">
+                                    <i class="fa fa-clock-o"></i>
+                                </a>
+                            </td>
+                            <td>{{formatResult delay "ms"}}</td>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="Jitter">
+                                    <i class="fa fa-sort"></i>
+                                </a>
+                            </td>
+                            <td>{{formatResult jitter "ms"}}</td>
+                        </tr>
+                        <tr>
+                            <td>
+                              <a data-toggle="tooltip" data-original-title="Video Streaming">
+                                  <i class="fa fa-youtube-play"></i>
+                              </a>
+                            </td>
+                            <td data-toggle="tooltip" data-original-title="{{videoDetails}}">
+                            {{video}}
+                            </td>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="MOS">
+                                    <i class="fa fa-bar-chart-o"></i>
+                                </a>
+                            </td>
+                            <td>
+                                <a data-toggle="tooltip" data-original-title="{{formatResult mos ""}}">
+                                    {{mosGrader mos}}
+                                </a>
+                            </td>
+                        </tr>
+                
+                        {{/each}}
+                    </table>
+                    <button type="button" class="center-block close btn btn-default" data-dismiss="modal"">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>                        
+
+<!--history template-->
+<script type="text/x-handlebars-template" id="result-template">
+    <div class="row">
+        <table class="table">
+            <tr>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Date">
+                        <span class="fa-stack fa-1x">
+                            <i class="fa fa-calendar-o fa-stack-1x"></i>
+                            <strong class="fa-stack-1x calendar-text">{{currentDay}}</strong>
+                        </span>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Location">
+                        <i class="fa fa-map-marker"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Upload">
+                        <i class="fa fa-arrow-circle-up"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Download">
+                        <i class="fa fa-arrow-circle-down"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Jitter">
+                        <i class="fa fa-sort"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Latency">
+                        <i class="fa fa-clock-o"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="Video Streaming">
+                        <i class="fa fa-youtube-play"></i>
+                    </a>
+                </td>
+                <td>
+                    <a data-toggle="tooltip" data-original-title="MOS">
+                        <i class="fa fa-bar-chart-o"></i>
+                    </a>
+                </td>
+                <!--<td>TODO: Remove row</td>-->
+            </tr>
+            {{#each results}}
+                <tr>
+                    <td class="date">
+                        <a data-toggle="tooltip" data-original-title="{{time}}">
+                            {{date}}
+                        </a>
+                    </td>
+                    <td class="location">
+                        <a data-toggle="tooltip" data-html="true" data-original-title="{{formatAddress address}}">
+                            {{location}}
+                        </a>
+                    </td>
+                    <td>{{formatResult upload "mbps"}}</td>
+                    <td>{{formatResult download "mbps"}}</td>
+                    <td>{{formatResult jitter "ms"}}</td>
+                    <td>{{formatResult delay "ms"}}</td>
+                    <td class="video-metrics">
+                        <a data-toggle="tooltip" data-html="true" data-original-title="{{formatVideo video videoConference voip}}">
+                            {{video}}
+                    </td>
+                    <td class="mos">
+                        <a data-toggle="tooltip" data-original-title="{{formatResult mos ""}}">
+                            {{mosGrader mos}}
+                        </a>
+                    </td>
+                    <!--<td class="fa-times red"></span>TODO: Remove row</td>-->
+                </tr>
+            {{/each}}
+        </table>
+    </div>
+</script>
+<!--NOTE: i placed a space so that we can verify that the address is a new one. Don't remove it unless you really undestand what's going on-->
+<script type="text/x-handlebars-template" id="viewer-template">
+    {{#each results}}
+    <h1 class="title">
+        <button class="btn btn-primary" onClick="Navigator.setSection(0);"><i class="fa fa-chevron-left"></i></button>&nbsp;
+        <i class="fa fa-map-marker"></i>&nbsp;<span class="viewer-address"><strong>{{address}}</strong></span>
+    </h1>
+
+    <ul class="simple-tabs row" id="resultTabs">
+        <li class="advertised-fixed active col-xs-6"><strong>Fixed Broadband</strong></li>
+        <li class="advertised-mobile col-xs-6"><strong>Mobile Broadband</strong></li>
+    </ul>
+
+    <div class="clear"></div>
+
+    <h2 class="text-center legend"><strong><div><i class="fa fa-arrow-circle-o-down text-x-large"></i></div> = download (mbps)&nbsp;&nbsp;&nbsp;<div><i class="fa fa-arrow-circle-o-up text-x-large"></i></div> = upload (mbps)</strong></h2>
+
+    <div id="advertised-fixed" class="tab-page active-page text-center">
+        <!--cause i'm lazy and don't feel like using margins-->
+        <br />
+        <br />
+        <br />
+        <br />
+        <img width="70" height="70" src="images/spiffygif_124x124.gif" />
+    </div>
+
+    <div id="advertised-mobile" class="tab-page text-center">
+        <!--cause i'm lazy and don't feel like using margins-->
+        <br />
+        <br />
+        <br />
+        <br />
+        <img width="70" height="70" src="images/spiffygif_124x124.gif" />
+    </div>
+    {{/each}}
+</script>
+
+<!--THIS IS WHERE WE WILL PLACE THE RESULTS FROM ARCGIS-->
+<script type="text/x-handlebars-template" id="viewer-results-template">
+{{#each results}}
+    {{#if members}}
+        {{#with members}}
+        <div class="viewer-result">
+            <h1 class="text-center">{{ DBA }}</h1>
+            <h3 class="text-center">{{ TechCode }}</h3>
+                <div class="brackets">
+                    <img src="images/speed_brackets.png" alt=""/>
+                
+                    <div class="percentage percentage-up">
+                        <div class="progress up-{{#if UploadKey}}{{ UploadKey }}{{else}}{{ MaxAdUp }}{{/if}}" style="margin-left:{{getPercentage 'upload' }}%"></div>
+                    </div>
+
+                    <div class="brackets">
+                        <img src="images/speed_brackets.png" alt=""/>
+                    </div>
+                    <div class="percentage percentage-down">
+                        <div class="progress down-{{#if DownloadKey}}{{ DownloadKey }}{{else}}{{ MaxAdDn }}{{/if}}" style="margin-left:{{getPercentage 'download' }}%"></div>
+                    </div>
+                </div>
+        </div>
+        {{/with}}
+    {{else}}
+        <div class="row">
+            <h1 class="text-center">No Results</h1>
+        </div>
+    {{/if}}
+{{/each}}
+</script>
+
+<script type="text/x-handlebars-template" id="details-template">
+{{#each results}}
+    <table>
+        <tr>
+            <th>Date</th>
+            <td>{{date}}</td>
+        </tr>
+        <tr>
+            <th>Time</th>
+            <td>{{time}}</td>
+        </tr>
+        <tr>
+            <th>Location</th>
+            <td>{{location}}</td>
+        </tr>
+        <tr>
+            <th>Upload Speed</th>
+            <td>{{formatResult upload "mbps"}}</td>
+        </tr>
+        <tr>
+            <th>Download Speed</th>
+            <td>{{formatResult download "mbps"}}</td>
+        </tr>
+        <tr>
+            <th>MOS</th>
+            <td>{{mos}}</td>
+        </tr>
+        <tr>
+            <th>Video Streaming</th>
+            <td>{{video}}</td>
+        </tr>
+        <tr>
+            <th>Video Conference</th>
+            <td>{{videoConference}}</td>
+        </tr>
+        <tr>
+            <th>VoIP</th>
+            <td>{{voip}}</td>
+        </tr>
+    </table>
+{{/each}}
+</script>
+
+<!--THIS IS WHERE WE WILL PLACE THE RESULTS FROM ARCGIS-->
+<script type="text/x-handlebars-template" id="viewer-results-advertised-template">
+{{#each results}}
+    {{#if members}}
+        {{#with members}}
+        <div class="row">
+            <h1 class="text-center">{{ DBA }}</h1>
+            <h3 class="text-center">{{ TechCode }}</h3>
+            <div class="col-xs-6">
+                <div class="percentage">
+                    <div class="progress" style="width:{{getPercentage 'upload' }}%"></div>
+                </div>
+            </div>
+            <div class="col-xs-6">
+                <div class="percentage">
+                    <div class="progress" style="width:{{getPercentage 'download' }}%"></div>
+                </div>
+            </div>
+        </div>
+        {{/with}}
+    {{/if}}
+    {{#if error}}
+        <div class="row">
+            <h1 class="text-center">No Results</h1>
+        </div>
+    {{/if}}
+{{/each}}
+</script>
+
+<script type="text/x-handlebars-template" id="test-template">
+    <!--upload test section-->
+    <div class="test-0 upload active" data-metric="mbps">
+        <h2 class="results text-center"></h2>
+        <div class="speedometer">
+            <div class="meter"></div>
+        </div>
+        <div class="upload-label">
+            <h2 class="text-center"><i class="fa fa-arrow-circle-up pull-left"></i>Upload</h2>
+        </div>
+    </div>
+
+    <!--download test section-->
+    <div class="test-1 download inactive" data-metric="mbps">
+        <div class="download-label">
+            <h2 class="text-center">Download<i class="fa fa-arrow-circle-down pull-right"></i></h2>
+        </div>
+        <div class="speedometer">
+            <div class="meter">
+            </div>
+        </div>
+        <h2 class="results text-center"></h2>
+    </div>
+
+    <!--delay test section-->
+    <div class="test-2 delay inactive" data-metric="ms">
+        <h2 class="results text-center"></h2>
+        <div class="delay-loader">
+            <div></div>
+        </div>
+        <div class="delay-label">
+            <h2 class="text-center">Latency</h2>
+        </div>
+    </div>
+
+    <!--jitter test section-->
+    <div class="test-3 jitter inactive" data-metric="ms">
+        <svg version="1.1" x="0px" y="0px" viewBox="0 0 583.246 220.381" enable-background="new 0 0 583.246 220.381" xml:space="preserve">
+            <path class="heartbeat" fill="none" stroke="#93CCE1" stroke-width="4.42" stroke-miterlimit="10" d="M0,108.844c2.041,0,3.523,0,5.006,0
+        c16.006,0,15.596-0.118,31.6,0.086c3.756,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823
+        l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302
+        c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772
+        l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59
+        c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.773,4.876c9.955-0.095,19.911-0.148,29.867-0.174l2,0.006
+        c2.041,0,3.523,0,5.006,0c16.006,0,15.596-0.118,31.6,0.086c3.756,0.048,6.574-1.089,9.154-3.604
+        c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812
+        l2.567-18.138l1.145,14.302c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082
+        c1.258,17.989,2.557,29.788,3.894,47.772l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222
+        c0.515-4.335,1.201-8.65,1.894-13.59c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.772,4.876
+        c9.955-0.095,19.911-0.148,29.867-0.174l1,0.089c2.041,0,3.523,0,5.006,0c16.006,0,15.596-0.118,31.6,0.086
+        c3.756,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823l3.475,11.952l1.666-12.154
+        c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302c1.267,18.539,2.582,37.074,3.851,55.613
+        c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772l2.591,22.524l2.698-21.357
+        c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59c1.847,2.03,4.364,4.872,4.364,4.872
+        c2.592,4.006,6.104,4.92,10.772,4.876c9.955-0.095,19.911-0.148,29.867-0.174l2,0.006c2.041,0,3.523,0,5.006,0
+        c16.006,0,15.596-0.118,31.6,0.086c3.755,0.048,6.574-1.089,9.154-3.604c1.992-1.942,4.183-3.681,6.745-5.911l2.004,7.823
+        l3.475,11.952l1.666-12.154c3.439-22.925,6.725-45.872,10.063-68.812l2.567-18.138l1.145,14.302
+        c1.267,18.539,2.582,37.074,3.851,55.613c0.915,13.359,1.748,26.724,2.682,40.082c1.258,17.989,2.557,29.788,3.894,47.772
+        l2.591,22.524l2.698-21.357c2.946-23.829,5.688-42.379,8.521-66.222c0.515-4.335,1.201-8.65,1.894-13.59
+        c1.847,2.03,4.364,4.872,4.364,4.872c2.592,4.006,6.104,4.92,10.773,4.876c9.955-0.095,19.911-0.148,29.867-0.174"/>
+        </svg>
+        <h2 class="results text-center"></h2>
+        <div class="jitter-label">
+            <h2 class="text-center">Jitter</h2>
+        </div>
+    </div>
+
+    <h1 class="testprogress">
+        <div class="progress"></div>
+        <button class="btn btn-test">
+            <i class="fa fa-flask"></i>
+        </button>
+    </h1>
+</script>
+ 
+
+
+<div id="menu">
+    <div id="logo">
+        <img src="images/logo.png" />
+    </div>
+    
+    <ul class="items">
+        
+        <li class="item-0 text-left active"  onClick="Navigator.setPage(0);">
+            <i class="fa fa-flask"></i><span>Tester</span>
+        </li>
+        <li class="item-1 text-left inactive" onClick="Navigator.setPage(1)">
+            <i class="fa fa-archive"></i><span>History</span>
+        </li>
+        <li class="item-2 text-left inactive" onClick="Navigator.setPage(2);
+            ViewerMsg.repeatedMessageDisplay(); Navigator.setSection(0);">
+            <i class="fa fa-globe"></i><span>Viewer</span>
+        </li>
+        <li class="item-3 text-left inactive" onClick="Navigator.setPage(3);
+            ViewerMsg.showMessage(locationMessage, '', 'medium');">
+            <i class="fa fa-map-marker"></i><span>Settings</span>
+        </li>
+<!--        <li class="item-4 text-left inactive" onClick="Navigator.setPage(4);
+            Feedback.showMessage(feedbackMessage, '', 'medium');" >
+            <i class="fa fa-gift"></i><span>Survey</span>
+        </li>-->
+     </ul>
+     <div class="text-center bottom">
+         <a onClick="Tester.showMessage(infoMessage, 'fa-info-circle', 'large')"><i class="fa fa-info-circle"></i></a>
+     </div>
+</div>
+<div id="pages">
+    <div class="page-0 active">
+        <div id="header">
+            <div class="phase-0 active">
+                <h2>Start</h2>
+            </div>
+            <div class="phase-1 inactive">
+                <h2>Preliminary Test</h2>
+            </div>
+            <div class="phase-2 inactive">
+                <h2>California Server</h2>
+            </div>
+            <div class="phase-3 inactive">
+                <h2>Virginia Server</h2>
+            </div>
+            <div class="phase-4 inactive">
+                <h2>Complete</h2>
+            </div>
+            <div class="clear"></div>
+            <div class="progress-bar">
+                <div class="progress"></div><div class="dot"></div>
+            </div>
+        </div>
+        <div class="phases-wrapper">
+            <div class="phases">
+                <div id="phase-0-test" class="phase-0 active">
+                    <div class="table">
+                        <h1 id="h1h1" class="text-center">
+                            Click the button 
+                            <button class="btn btn-test" onClick="Tester.toggleTestingInProgress('true'); Navigator.setTestLock(true)">
+                                <i class="fa fa-flask"></i>
+                            </button> to start a new test<br>
+                        </h1>
+                        <h2 id="page-y" class="text-center">Connecting...</h2>
+                    </div>
+                </div>
+                
+                <div class="phase-1 inactive">
+                    <div class="table">
+                        <div class="test" data-template="test"></div>
+                    </div>
+                </div>
+                <div class="phase-2 inactive">
+                    <div class="table">
+                        <div class="test" data-template="test"></div>
+                    </div>
+                </div>
+                <div class="phase-3 inactive">
+                    <div class="table">
+                        <div class="test" data-template="test"></div>
+                    </div>
+                </div>
+                <div class="phase-4 inactive">
+                    <div class="table">
+                        <div id="final-results"></div>
+                        <h1 id="header-final" class="text-center">Click the button <button class="btn btn-test" onClick="Tester.toggleTestingInProgress('true'); Navigator.setTestLock(true)"><i class="fa fa-flask"></i></button> to start a new test<br></h1>
+                        <h2 id="page-final" class="text-center">Connecting...</h2>
+                    </div>
+                </div>
+                <div class="clear"></div>
+            </div>
+        </div>
+    </div><!--end of page-0-->
+    <div id="history" class="page-1">
+        <!--<h1 class="text-center title">History</h1>-->
+        <div id="history-results">
+        </div>
+        <div id="detailed-history">
+        </div>
+        <button id="done-button" class="btn btn-primaryy" onclick="Tester.hideMessage();Tester.clearLocationMessageBox();">Done</button>
+    </div>
+    <div id="viewer" class="page-2">
+        <div class="phases-wrapper">
+            <div class="phases">
+                <div class="phase-0 active">
+                    <input id="pac-input" class="controls" type="text" placeholder="Search California" />
+                    <div id="google-map" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px;">
+
+                    </div>
+                </div>
+                <div class="phase-1">
+                    <div id="viewer-results">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="location" class="page-3">
+        <div id="location-results" class="form-body">
+            <h3 class="h3" id="h1">Settings </h3><br>
+            <div id="d1">This is the current ISP we have:</div>
+            <input name="current-isp" id="current-isp" class="location-controls" size="66" type="text" readonly placeholder=""><br>
+            <div id="d2">To update your ISP information, enter here:</div><br>
+            <input name="update-isp" id="update-isp" class="location-controls" size="66" type="text"><br>
+            <div id="d3">This is the current location we have:</div>
+            <input id="current-location" size="66" readonly class="location-controls" type="text">
+            <div id="d4">To update your location information, enter here:</div>
+            
+<!--            
+            <span id="s1">latitude:</span>
+            <span id="s2">longitude:</span>
+            <div id="s3">OR</div>
+            <div id="s4">If you don't know your correct location, you can find coordinates (lat/long) at Google Maps.
+                <ol id="ol1"><li>On your computer, visit Google Maps <span id="google-map-link" onclick="app.openInBrowser()">(www.google.com/maps)</span>.</li>
+                    <li>Right-click your location on the map.</li>
+                    <li>Select "What's here?"</li>
+                    <li>Coordinates (lat/long) will appear either in or below the search box.</li></ol></div>
+            <input name="coordinates" onchange="Location.latlongInput()" id="lat-input" type="text" size="23" class="location-controls" placeholder="e.g. 36.653106">
+            <input name="coordinates" onchange="Location.latlongInput()" id="long-input" type="text" size="23" class="location-controls" placeholder="e.g. -121.800211">
+   
+-->
+            
+            <div><input id="location-input" onchange="Location.addressInput()" size="66" class="location-controls" type="text"  placeholder="e.g. 100 Campus Center, Seaside, CA 93933" />
+                <br></div>
+            <br>
+            <button id="update-button" class="btn btn-primaryy" onclick="Location.locationInfo();
+                        ">Save</button>
+            <button id="cancel-button" class="messages" onclick="Tester.hideMessage();
+                   Tester.clearLocationMessageBox();ViewerMsg.showMessage(locationMessage, '', 'medium');">Retry</button>
+            <button id="cancel-buttonn" class="btn btn-primaryy" onclick="Tester.hideMessage();
+                   Tester.clearLocationMessageBox();Navigator.setPage(0);">Dismiss</button>
+            <button id="dismiss-button" class="messages" onclick="Tester.hideMessage();
+                   Tester.clearLocationMessageBox();Navigator.setPage(0);">Ok</button>
+            <button id="agree-button" class="btn btn-primaryy" onclick="Tester.insertTermsValue();
+                Tester.hideMessage();Tester.clearLocationMessageBox();Navigator.setPage(3);
+                ViewerMsg.showMessage(locationMessage,'','medium');">Agree</button>
+            <button id="exit-button" class="btn btn-primaryy" onclick="app.exitOnTerms();">Exit</button>
+        </div>
+    </div>
+<div id="feedback" class="page-4">
+    <div id="feedback-body" class="form-body">
+        <div class="feedback-form" id="feedback-1">
+            <h2 class='h3'>Survey</h2>
+            <div id="feed1">Are you satisfied with your broadband internet service?</div>
+            
+             <div id="satisfied-options" style="margin:5px">
+                <input type="radio" id="satisfied-yes" value="yes" name="satisfied">Yes<br>
+                <input type="radio"id="satisfied-no" value="no" name="satisfied">No<br>
+             </div>
+            <hr>
+            
+            <div id="feed2">Last Test Result:</div>
+            <div>
+                <span>Upload Speed:</span>
+                <input id="upload-speed-result" size="8" readonly class="location-controls" type="text">
+                <span>Mbps</span>
+            </div>
+            <div>
+                <span>Download Speed:</span>
+                <input id="download-speed-result" size="8" readonly class="location-controls" type="text">
+                <span>Mbps</span>
+            </div>
+            <hr>
+            
+            <div id="feed3">Your expected upload speed is:</div>
+            <div>
+                <input id="upload-speed-input" size="10" class="location-controls" pattern="[0-9]" type="text">
+                <span>Mbps</span>
+            </div>
+            <div id="feed4">Your expected download speed is:</div>
+            <div>
+                <input id="download-speed-input" size="10" class="location-controls" pattern="[0-9]" type="text">
+                <span>Mbps</span>
+            </div>
+            <hr>
+            <div>
+                <h3 style="margin:5px">Additional Comments:</h3>
+                <textarea id="additional-comments" rows="6" cols="50"></textarea>
+                <br><span style="font-size:75%;color:gray">*500 char max</span>
+            </div>
+            <br>
+            <label class="checkbox-inline">
+                <input type="checkbox" id="inlineCheckbox2" id="do-not-ask" name="doNotAsk">Do Not Ask Again<br>
+            </label>
+            <button class="btn btn-primaryy" onclick="Feedback.saveResponse()">Submit</button>
+            <button id="skip-button" class="btn btn-primaryy" onclick="Tester.hideMessage();
+                   Feedback.handleSkip();">Skip</button>
+        </div>
+        <button id="retry-button" class="messages" onclick="Tester.hideMessage();Feedback.showMessage(feedbackMessage, '', 'medium');">Retry</button>
+
+    </div>
+<!--      <button class="right-button" onclick="Feedback.setFormPage(2)">Next</button>
+        </div>
+        <div class="feedback-form" id="feedback-2">
+            <h3>Who is your current Broadband Internet service provider?</h3>
+            <div id="feedback-providers" style="margin:5px">
+                <input type="radio" name="provider">AT&T California<br>
+                <input type="radio" name="provider">At&T Mobility LLC<br>
+                <input type="radio" name="provider">Clearwire<br>
+                <input type="radio" name="provider">Comcast<br>
+                <input type="radio" name="provider">Digital Path, Inc.<br>
+                <input type="radio" name="provider">Hughes.net<br>
+                <input type="radio" name="provider">INTEGRA TELECOM<br>
+                <input type="radio" name="provider">Megapath<br>
+                <input type="radio" name="provider">MetroPCS<br>
+                <input type="radio" name="provider">Skycasters, LLC<br>
+                <input type="radio" name="provider">Sonic.net<br>
+                <input type="radio" name="provider">Sprint<br>
+                <input type="radio" name="provider">Starband<br>
+                <input type="radio" name="provider">Succeed.Net<br>
+                <input type="radio" name="provider">SureWest Broadband<br>
+                <input type="radio" name="provider">T-Mobile<br>
+            </div>
+            <button class="left-button" onclick="Feedback.setFormPage(1)">Previous</button>
+            <button class="right-button" onclick="Feedback.setFormPage(3)">Next</button>
+        </div>
+        <div class="feedback-form" id="feedback-3">
+            <h3>Are you satisfied with your broadband Internet service?</h3>
+            <input type="radio" name="satisfied">Yes<br>
+            <input type="radio" name="satisfied">No<br><br>
+            <button class="left-button" onclick="Feedback.setFormPage(2)">Previous</button>
+            <button class="right-button" onclick="Feedback.setFormPage(4)">Next</button>
+        </div>
+        <div class="feedback-form" id="feedback-4">
+        <p style="margin:5px;width:90%;font-size:90%;">The providing of any contact information 
+               (Name or Email) is optional. If you choose to provide your contact information you
+               are consenting to the California Public Utilities Commission collecting this
+               information and contacting you with regard to this transaction or to use this
+               information or any purpose permitted in our Private Policy.<br>
+            <p style="margin:5px;width:90%;font-size:90%;">By clicking the "Submit" button
+               below you are consenting to having the
+               location provided shown on the California Interactive Broadband Map.<br></p>
+            <p style="margin:5px;width:90%;font-size:90%;">If you have any questions or concerns,
+               please contact us at broadbandfeedback@cpuc.ca.gov</p>
+-->
+
+</div>
+</div><!--end of pages-->
+</body>
+</html>
