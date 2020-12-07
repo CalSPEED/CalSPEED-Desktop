@@ -27,7 +27,6 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 package Tester.utils;
 
 import java.util.ArrayList;
@@ -94,8 +93,8 @@ public class Globals {
     
     public static final int IN_SECRET = -1;
     public static final int OUT_SECRET = -1;
-    public static final String ARCGIS_MAPSERVER_URL = "localhost";
-    public static final String LATLONG_XY_URL = "localhost";
+    public static final String ARCGIS_MAPSERVER_URL = "https://localhost";
+    public static final String LATLONG_XY_URL = "http://localhost";
     
     public static final String ADVERTISED = "advertised";
     public static final String FIXED = "Fixed";

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<project default="override">
+    <target name="-check.os">
+        <condition property="-is.mac">
+            <os family="mac"/>
+        </condition>
+        <condition property="-is.unix">
+            <os family="unix"/>
+        </condition>
+        <condition property="-is.windows">
+            <os family="windows"/>
+        </condition>
+    </target>
+    <target name="-config.mac" depends="-check.os" if="-is.mac">
+        <echo message="Came into the Mac target. Overriding properties." />
+        <property name="javafx.deploy.icon.native">src/assets/logo.icns</property>
+        <property name="javafx.deploy.splash">src/assets/logo.icns</property>
+        <property name="javafx.deploy.installpermanently">true</property>
+    </target>
+    <target name="-config.unix" depends="-check.os" if="-is.unix">
+        <echo message="Came into the Mac target. Overriding properties." />
+        <property name="javafx.deploy.icon.native">src/assets/logo.ico</property>
+        <property name="javafx.deploy.splash">src/assets/logo.ico</property>
+        <property name="javafx.deploy.installpermanently">false</property>
+    </target>
+    <target name="-config.windows" depends="-check.os" if="-is.windows">
+        <echo message="Came into the Windows target. Overriding properties." />
+        <property name="javafx.deploy.icon.native">src/assets/logo.ico</property>
+        <property name="javafx.deploy.splash">"src/assets/logo.ico"</property>
+        <property name="javafx.deploy.installpermanently">"false"</property>
+    </target>
+    
+    <target name="set-os-config" depends="-config.mac,-config.windows,-config.unix"/>
+</project>

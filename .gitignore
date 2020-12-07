@@ -1,0 +1,10 @@
+/bin
+/nbproject/private/
+/build/
+/dist/
+/iperf_mac_10_6
+/calspeed.mv.db
+/calspeed.trace.db
+/calspeed.lock.db
+/classes/
+/uploads/

@@ -1,4 +1,3 @@
-/*
 Copyright (c) 2020, California State University Monterey Bay (CSUMB).
 All rights reserved.
 
@@ -26,40 +25,3 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-package Tester.utils;
-
-import java.util.Comparator;
-import java.util.Objects;
-
-/**
- *
- * @author joshuaahn
- */
-public class MetricComparator implements Comparator {
-    @Override
-    public int compare(Object objectA, Object objectB) {
-        Metric a = (Metric) objectA;
-        Metric b = (Metric) objectB;
-        if (a.getServer().equals("WEST") && !(b.getServer().equals("WEST"))) {
-            return -1;
-        } else if (a.getServer().equals("EAST") && !(b.getServer().equals("EAST"))) {
-            return 1;
-        } else {
-            if (a.getDirection().equals("UP") && !(b.getDirection().equals("UP"))) {
-                return -1;
-            } else if (a.getDirection().equals("DOWN") && !(b.getDirection().equals("DOWN"))) {
-                return 1;
-            } else {
-                Integer aInt = (int) Double.parseDouble(a.getTimeRange());
-                Integer bInt = (int) Double.parseDouble(b.getTimeRange());
-                if (Objects.equals(aInt, bInt)) {
-                    return a.getThreadID() - b.getThreadID();
-                } else {
-                    return aInt - bInt;
-                }
-            }
-        }
-    }
-}

@@ -26,8 +26,7 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
+ */
 package GUI;
 
 import Tester.utils.configs.TCPTestConfig;
@@ -93,6 +92,7 @@ public class MainController extends StackPane {
         webView.setContextMenuEnabled(false);
         className = this.getClass().getName();
         config = new ConfigManager();
+        Timber.debug(className, "Starting setting up database");
         database = new Database(Globals.DB_NAME, Globals.TABLE_NAME);
         database.createInit();
         database.createValidationTable();
@@ -101,6 +101,7 @@ public class MainController extends StackPane {
         database.createLocationTable();
         database.updateLocationTable();
         database.createIgnoreTable();
+        Timber.debug(className, "Finish setting up database");
 
         final String data = database.selectData();
         final URL url = getClass().getResource("index.html");
@@ -188,6 +189,9 @@ public class MainController extends StackPane {
      * sequentially then be monitored for setting values on the gui.
      */
     public void startTest() {
+        log("Starting test");
+        start = Instant.now();
+        Timber.info(className, "Start stopwatch: " + start.toString());
         //simple way to prevent a test to be run more than once at a time
         if (testRunning) {
             jsTester.call("hideConnection"); //fixes bug when start button is clicked multiple times
@@ -215,7 +219,7 @@ public class MainController extends StackPane {
             testResult.carrier = LocationService.getCarrier();
             testResult.videoDetails = Tester.videoDetails;
 
-            if (!command.testIP("127.0.0.1", 4)) {
+            if (!command.testIP("", 4)) {
                 jsTester.call("toggleTestingInProgress", "false");  //show connection message
                 FilePrep.setTimestamp(testResult.timestamp);
                 FilePrep.addDetail("fail");
@@ -251,6 +255,7 @@ public class MainController extends StackPane {
             Integer[] arg = {1}; //once you click it it should go on
             jsTester.call("setPhase", arg);
             FilePrep.setTimestamp(testResult.timestamp);
+            Timber.debug(className, "call probe test");
             runProbeTest();
         }
     }
@@ -398,6 +403,8 @@ public class MainController extends StackPane {
         String windowSizeProperty = config.getAppProperty(String.format("test.tcp.%s.window_size", tierName));
         String threadsProperty = config.getAppProperty(String.format("test.tcp.%s.threads", tierName));
         String testTimeProperty = config.getAppProperty(String.format("test.tcp.%s.test_time", tierName));
+        Timber.debug(className, String.format("tier: %d, thread num: %s, window size: %s, test time: %s",
+                tier, threadsProperty, windowSizeProperty, testTimeProperty));
         try {
             threadNumber = Integer.valueOf(threadsProperty);
         } catch (NumberFormatException e) {
@@ -450,11 +457,13 @@ public class MainController extends StackPane {
             @Override
             public void changed(ObservableValue o, Object oldVal, Object newVal) {
                 double downloadValue = probeTester.getFinalDownloadValue().getValue();
+                Timber.debug(className, "Download speed is: " + String.valueOf(downloadValue));
                 writeProbeResult("\nDownload speed result is: " + String.valueOf(downloadValue));
                 setTier(downloadValue);
                 Globals.threadData.clear();
                 Tester tests[] = createTests();
                 probeTestFinished = true;
+                System.out.println("probe test: change to phase 2");
                 jsTester.call("setPhase", 2);
                 createListeners();
                 runAllTests(tests, 0);
@@ -468,8 +477,10 @@ public class MainController extends StackPane {
         this.probeResults = "";
         testThread = new Thread(probeTester);
         testThread.setDaemon(true);
+        Timber.debug(className, "start probe test");
         testThread.start();
         this.probeTestFinished = false;
+        Timber.debug(className, "calling jsTester probeTest");
         jsTester.call("probeTest");
     }
     
@@ -490,6 +501,7 @@ public class MainController extends StackPane {
         } else {
             configTier = Globals.TIER_ONE;
         }
+        Timber.debug(className, "CONFIG TIER: " + String.valueOf(configTier));
     }
 
     public void updateSetSurvey() {
@@ -508,6 +520,7 @@ public class MainController extends StackPane {
      * @param current_test The current index for the tests array
      */
     private void runAllTests(final Tester[] tests, final int current_test) {
+        Timber.debug(className, "RUNNING TEST " + String.valueOf(current_test));
         //base case (when the final test has been reached)
         if (tests.length == (current_test + 1)) {
             final Gson jsonParser = new Gson();
@@ -551,6 +564,10 @@ public class MainController extends StackPane {
                             Timber.debug(className, "MOS: " + MOSCalculation.getMOS());
                             Tester.clearMetrics();
                             updateLastTestResult();
+                            Instant end = Instant.now();
+                            Duration timeElapsed = Duration.between(start, end); 
+                            Timber.info(className, "Test time: " + timeElapsed.toString());
+                            System.out.println("Test time: " + timeElapsed.toString());
                         }
                     });
                 }
@@ -596,6 +613,7 @@ public class MainController extends StackPane {
      * method.
      */
     public void setTestsCompleteFromIndex(int index) {
+        Timber.debug(className, "test index: " + String.valueOf(index));
         int testsComplete;
         switch (index) {
             case 0:
@@ -664,12 +682,14 @@ public class MainController extends StackPane {
                         String value = (String) newVal;
                         if (!value.equals("error")) {
                             String advertisedFixed = arcGisData.getByType((String) newVal, Globals.FIXED);
+                            Timber.verbose(className, "Advertised Fixed: " + advertisedFixed);
                             if (advertisedFixed.equals("error")) {
                                 advertisedFixed = ArcGis.getJSONError();
                             }
                             String[] fixedArgs = {"#advertised-fixed", "viewer-results", advertisedFixed};
                             jsTemplater.call("loadTemplate", fixedArgs);
                             String advertisedMobile = arcGisData.getByType((String) newVal, Globals.MOBILE);
+                            Timber.verbose(className, "Advertised Min Mobile: " + advertisedMobile);
                             if (advertisedMobile.equals("error")) {
                                 advertisedMobile = ArcGis.getJSONError();
                             }
@@ -756,9 +776,6 @@ public class MainController extends StackPane {
         if (this.timestamp == 0L) {
             this.timestamp = Calendar.getInstance().getTimeInMillis();
         }
-        Survey survey = new Survey(satisfied, upload, download,
-                additionalComments, this.timestamp);
-        survey.write();
         FilePrep.saveToFile();
     }
 
@@ -777,6 +794,7 @@ public class MainController extends StackPane {
         if (downloadValue < 0.0) {
             lastDownloadValue = "N/A";
         }
+        log("Last known values: UP: " + lastUploadValue + " DOWN: " + lastDownloadValue);
         jsSurvey.call("loadLastResult", lastUploadValue, lastDownloadValue);
     }
 
